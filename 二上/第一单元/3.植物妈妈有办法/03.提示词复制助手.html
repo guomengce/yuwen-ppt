@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>提示词复制助手</title>
+  <style>
+    :root {
+      --bg: #f5f7f1;
+      --text: #1f2a1f;
+      --muted: #657468;
+      --line: #dbe6d7;
+      --accent: #5f8f5a;
+      --accent-hover: #4c7a4b;
+      --panel: #ffffff;
+      --hover: #edf6ea;
+      --shadow: 0 12px 30px rgba(50, 78, 54, 0.08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at top left, rgba(144, 193, 132, 0.16), transparent 30%),
+        linear-gradient(180deg, #fafbf7 0%, var(--bg) 100%);
+      color: var(--text);
+      font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+    }
+    .wrap {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 28px 18px 40px;
+    }
+    .hero {
+      margin-bottom: 18px;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+      line-height: 1.2;
+    }
+    .sub {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .board {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      overflow: hidden;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+    .row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 14px;
+      padding: 12px 16px;
+      border-top: 1px solid var(--line);
+      transition: background-color 0.2s ease;
+    }
+    .row:first-child { border-top: 0; }
+    .row:hover {
+      background-color: var(--hover);
+    }
+    .title {
+      min-width: 0;
+      font-size: 15px;
+      line-height: 1.45;
+      font-weight: 600;
+      word-break: break-word;
+    }
+    .copy-btn {
+      border: 0;
+      border-radius: 10px;
+      background: var(--accent);
+      color: #fff;
+      padding: 9px 16px;
+      min-width: 96px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.12s ease, background-color 0.2s ease;
+    }
+    .copy-btn:hover {
+      background: var(--accent-hover);
+    }
+    .copy-btn:active {
+      transform: scale(0.99);
+    }
+    .copy-btn.done {
+      background: #466c44;
+    }
+    .status {
+      margin-top: 14px;
+      min-height: 22px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    @media (max-width: 640px) {
+      .wrap { padding: 22px 12px 28px; }
+      h1 { font-size: 24px; }
+      .row {
+        grid-template-columns: 1fr;
+      }
+      .copy-btn { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hero">
+      <h1>提示词复制助手</h1>
+      <p class="sub">支持直接复制每条文本内容，并且鼠标悬停行上有高亮背景，方便确认按钮与所在行的对应关系。</p>
+    </div>
+    <div class="board" id="board"></div>
+    <div class="status" id="status">共 40 条提示词</div>
+  </div>
+  <script>
+    const rowsData = [{"title": "第1页｜封面页", "prompt": "## 第1页｜封面页\n\n**版面视觉**\n\n16:9全屏。背景为明亮、清新的自然原野风光，蓝天白云、绿草地、蒲公英飞絮轻轻飘散。中央留完整安全文字区，整体温暖、童趣、适合二年级语文课堂。\n\n**展示文本**\n\n> zhí wù mā ma yǒu bàn fǎ\n> 植物妈妈有办法\n> \n> 大自然探秘之旅\n\n---"}, {"title": "第2页｜情境导入", "prompt": "## 第2页｜情境导入\n\n**版面视觉**\n\n16:9全屏。背景为清新自然观察场景，中间留大块文字区。周围点缀植物剪影和微风轨迹，营造“探秘”氛围，但画面保持明亮、轻快。\n\n**展示文本**\n\n> bú yòng jiǎo，bú yòng chì bǎng，\n> yě néng qù lǚ xíng。\n> \n> 不用脚，\n> 不用翅膀，\n> 也能去旅行。\n> \n> 猜一猜，\n> 我们今天要认识谁？\n\n---"}, {"title": "第3页｜学习目标", "prompt": "## 第3页｜学习目标\n\n**版面视觉**\n\n16:9宽屏。任务单样式，左侧放卷轴或任务卡图形，右侧留出清晰文本区。背景以放大镜、叶片、小地图轻巧点缀。\n\n**展示文本**\n\n> 学习目标\n> \n> 1. 认识生字，读准多音字“得”。\n> 2. 正确、流利地朗读课文。\n> 3. 了解植物传播种子的方法。\n> 4. 学会仔细观察，发现更多秘密。\n\n---"}, {"title": "第4页｜认读生字", "prompt": "## 第4页｜认读生字\n\n**版面视觉**\n\n16:9全屏。清新自然背景，生字按两到三组有序排布，字体醒目，预留足够留白，便于课堂认读。\n\n**展示文本**\n\n> 认读生字\n> \n> zhí rú lǚ zhǔn bèi sòng fēn guà\n> 植 如 旅 准 备 送 纷 挂\n> \n> tǐng zuān dǐ zhà lí guān cū dé\n> 挺 钻 底 炸 离 观 粗 得\n\n---"}, {"title": "第5页｜识字提醒", "prompt": "## 第5页｜识字提醒\n\n**版面视觉**\n\n16:9宽屏。木质展板或词语提示页风格，文字区居中偏左，右侧点缀小喇叭或发音提示图标。\n\n**展示文本**\n\n> 读音提醒\n> \n> 翘舌音：\n> 植  如  准  炸\n> \n> 平舌音：\n> 送  钻  粗\n> \n> 边音：\n> 旅  离\n> \n> 后鼻音：\n> 挺\n\n---"}, {"title": "第6页｜词语初读", "prompt": "## 第6页｜词语初读\n\n**版面视觉**\n\n16:9比例。蓝天草地背景，词语采用词卡或泡泡卡整齐排布，画面轻快，便于学生扫读。\n\n**展示文本**\n\n> 词语初读\n> \n> 如果  旅行  准备  送给\n> 纷纷  挂住  挺大  钻出来\n> 底下  炸开  离开  观察\n> 粗心  知识\n\n---"}, {"title": "第7页｜看图认词", "prompt": "## 第7页｜看图认词\n\n**版面视觉**\n\n16:9宽屏。左侧为六幅局部清楚的小图：降落伞、带刺的苍耳、豆荚、牛马的脚、小鸟的翅膀、动物的皮毛。右侧为词语卡，版面干净、互动感强。\n\n**展示文本**\n\n> 看图认词\n> \n> 降落伞\n> 铠甲\n> 豆荚\n> 脚\n> 翅膀\n> 皮毛\n\n---"}, {"title": "第8页｜初读要求", "prompt": "## 第8页｜初读要求\n\n**版面视觉**\n\n16:9全屏。任务提示页风格，中间留大文本区，四周用叶片、种子、小箭头等自然元素点缀。\n\n**展示文本**\n\n> 初读要求\n> \n> 1. 标出小节号。\n> 2. 圈出生字，多读几遍。\n> 3. 读准字音，读通句子。\n> 4. 画出课文中的植物名字。\n\n---"}, {"title": "第9页｜第一小节：提出问题", "prompt": "## 第9页｜第一小节：提出问题\n\n**版面视觉**\n\n16:9全屏。左侧或中间为完整课文展示区，右侧为牛马、小鸟的轻巧插图，留白充分，便于阅读。\n\n**展示文本**\n\n> hái zi rú guǒ yǐ jīng zhǎng dà，\n> 孩子如果已经长大，\n> jiù děi gào bié mā ma，sì hǎi wéi jiā。\n> 就得告别妈妈，四海为家。\n> \n> niú mǎ yǒu jiǎo，niǎo yǒu chì bǎng，\n> 牛马有脚，鸟有翅膀，\n> zhí wù lǚ xíng yòu yòng shén me bàn fǎ？\n> 植物旅行又用什么办法？\n\n---"}, {"title": "第10页｜词语体悟：四海为家", "prompt": "## 第10页｜词语体悟：四海为家\n\n**版面视觉**\n\n16:9比例。背景为田野、高山、河边、草地等不同场景拼接，但保持柔和统一。中间保留清楚文本区。\n\n**展示文本**\n\n> sì hǎi wéi jiā\n> 四海为家\n> \n> 植物的种子落到哪里，\n> 就在哪里生根发芽。\n\n---"}, {"title": "第11页｜第二小节：蒲公英妈妈", "prompt": "## 第11页｜第二小节：蒲公英妈妈\n\n**版面视觉**\n\n16:9全屏。左侧展示成熟蒲公英，右侧为课文文字区。主画面轻盈、明亮，文字区保持低纹理留白。\n\n**展示文本**\n\n> pú gōng yīng mā ma zhǔn bèi le jiàng luò sǎn，\n> 蒲公英妈妈准备了降落伞，\n> bǎ tā sòng gěi zì jǐ de wá wa。\n> 把它送给自己的娃娃。\n> \n> zhǐ yào yǒu fēng qīng qīng chuī guò，\n> 只要有风轻轻吹过，\n> hái zi men jiù chéng zhe fēng fēn fēn chū fā。\n> 孩子们就乘着风纷纷出发。\n\n---"}, {"title": "第12页｜蒲公英传播方法", "prompt": "## 第12页｜蒲公英传播方法\n\n**版面视觉**\n\n16:9比例。观察记录页样式，蒲公英特写和飞散轨迹形成主体，文字区布局简洁清楚。\n\n**展示文本**\n\n> 蒲公英妈妈的办法\n> \n> 自身条件：降落伞\n> 外部条件：风\n> 传播方式：乘着风  纷纷出发\n\n---"}, {"title": "第13页｜理解“纷纷出发”", "prompt": "## 第13页｜理解“纷纷出发”\n\n**版面视觉**\n\n16:9比例。多个蒲公英种子先后飞出的动态画面，留出稳定文字区，画面轻巧灵动。\n\n**展示文本**\n\n> 纷纷出发\n> \n> 不是一下子全飞走，\n> 而是一个接一个地出发。\n> \n> 说一说：\n> 下课铃一响，\n> 同学们就纷纷________。\n\n---"}, {"title": "第14页｜第三小节：苍耳妈妈", "prompt": "## 第14页｜第三小节：苍耳妈妈\n\n**版面视觉**\n\n16:9全屏。左侧为苍耳果实特写，右侧为课文展示区。画面突出“带刺”的外形，但不压迫文字区。\n\n**展示文本**\n\n> cāng ěr mā ma yǒu gè hǎo bàn fǎ，\n> 苍耳妈妈有个好办法，\n> tā gěi hái zi chuān shàng dài cì de kǎi jiǎ。\n> 她给孩子穿上带刺的铠甲。\n> \n> zhǐ yào guà zhù dòng wù de pí máo，\n> 只要挂住动物的皮毛，\n> hái zi men jiù néng qù tián yě、shān wā。\n> 孩子们就能去田野、山洼。\n\n---"}, {"title": "第15页｜苍耳传播方法", "prompt": "## 第15页｜苍耳传播方法\n\n**版面视觉**\n\n16:9比例。苍耳和动物皮毛形成直观对照，画面中可见苍耳小刺的细节。文字区开阔、清楚，便于理解传播方法。\n\n**展示文本**\n\n> 苍耳妈妈的办法\n> \n> 自身条件：带刺的铠甲\n> 外部条件：动物的皮毛\n> 传播方式：挂住\n\n---"}, {"title": "第16页｜苍耳精读补充：铠甲和倒钩", "prompt": "## 第16页｜苍耳精读补充：铠甲和倒钩\n\n**版面视觉**\n\n16:9比例。苍耳实物特写占据右侧主体区域，能清楚看到小刺和倒钩；左侧为观察记录区。画面明亮自然，突出“看一看、摸一摸、比一比”的课堂观察感。\n\n**展示文本**\n\n> 苍耳为什么能挂住皮毛？\n> \n> 带刺的铠甲\n> \n> 刺的顶端有倒钩\n> \n> 看一看\n> 摸一摸\n> 说一说\n> \n> 苍耳是怎样把自己挂住的？\n\n---"}, {"title": "第17页｜第一课时朗读指导", "prompt": "## 第17页｜第一课时朗读指导\n\n**版面视觉**\n\n16:9全屏。自然背景柔和统一，中央保留完整朗读提示区。画面服务于“第一至三小节整体朗读”，不再分散到单个植物上。\n\n**展示文本**\n\n> 第一课时朗读小提示\n> \n> 第1小节：\n> 读出好奇、疑问的语气\n> \n> 蒲公英：\n> 读出妈妈的爱意\n> 读出风的轻柔\n> 读出纷纷出发的喜悦\n> \n> 苍耳：\n> 读得干脆有力\n> 读出挂住皮毛去旅行的神气\n\n---"}, {"title": "第18页｜写字指导一", "prompt": "## 第18页｜写字指导一\n\n**版面视觉**\n\n16:9比例。田字格练字页，背景安静、清爽。四个字分成两行或两列整齐排布，适合先观察共性，再配笔画动画学习书写。\n\n**展示文本**\n\n> 写字指导\n> \n> 如  经  轻  别\n> \n> 先观察：\n> 左右结构\n> \n> “经、轻”右半部分相近\n> “别”左宽右窄\n> “如”女字旁要写舒展\n\n---"}, {"title": "第19页｜写字指导二", "prompt": "## 第19页｜写字指导二\n\n**版面视觉**\n\n16:9比例。田字格练字页，版面留白足够，适合逐字播放笔画动画。两个字放大展示，方便提醒易错点。\n\n**展示文本**\n\n> 写字指导\n> \n> 已  发\n> \n> 先观察：\n> “已”要和“己”区分\n> “发”的撇捺要舒展\n\n---"}, {"title": "第20页｜第一课时小结", "prompt": "## 第20页｜第一课时小结\n\n**版面视觉**\n\n16:9全屏。自然探秘进度页，画面明亮，中央保留大块总结文字区。\n\n**展示文本**\n\n> 第一课时小结\n> \n> 蒲公英：降落伞 + 风\n> 苍耳：带刺的铠甲 + 动物皮毛\n> \n> 我们已经发现了两位植物妈妈的办法。\n\n---"}, {"title": "第21页｜第二课时导入", "prompt": "## 第21页｜第二课时导入\n\n**版面视觉**\n\n16:9比例。复习唤醒页，种子泡泡或词语卡片轻快散布，中央留抢读与填空提示区，兼顾导入和词语热身。\n\n**展示文本**\n\n> 复习一下\n> \n> 旅行  准备  降落伞  纷纷\n> 挂住  皮毛  四海为家\n> \n> 填一填：\n> 植物（    ）又用什么办法？\n\n---"}, {"title": "第22页｜第四小节：石榴妈妈", "prompt": "## 第22页｜第四小节：石榴妈妈\n\n**版面视觉**\n\n16:9全屏。枝头成熟石榴和飞来的小鸟形成故事感画面，主体放右侧，左侧为清晰文字区。\n\n**展示文本**\n\n> shí liu mā ma yǒu gè hǎo bàn fǎ，\n> 石榴妈妈有个好办法，\n> tā bú pà xiǎo niǎo chī diào wá wa。\n> 她不怕小鸟吃掉娃娃。\n> \n> hái zi men zài niǎo dù zi lǐ shuì shàng yí jiào，\n> 孩子们在鸟肚子里睡上一觉，\n> jiù huì zuān chū lái luò hù ān jiā。\n> 就会钻出来落户安家。\n\n---"}, {"title": "第23页｜石榴传播方法", "prompt": "## 第23页｜石榴传播方法\n\n**版面视觉**\n\n16:9比例。石榴、小鸟、种子传播路线构成主体，画面温暖有趣，文本区稳定。\n\n**展示文本**\n\n> 石榴妈妈的办法\n> \n> 自身特点：胆子挺大\n> 外部条件：小鸟\n> 传播方式：吃掉  睡上一觉  钻出来\n> 结果：落户安家\n\n---"}, {"title": "第24页｜石榴精读补充：睡一觉 落户安家", "prompt": "## 第24页｜石榴精读补充：睡一觉 落户安家\n\n**版面视觉**\n\n16:9比例。石榴果实、小鸟飞行路线和远方落点构成故事式画面。主体清楚，左侧留足精读讲解区，适合想象种子“旅行”和“安家”的过程。\n\n**展示文本**\n\n> 石榴妈妈为什么不怕小鸟吃掉娃娃？\n> \n> 在鸟肚子里睡上一觉\n> \n> 钻出来\n> \n> 落户安家\n> \n> 想一想：\n> 石榴种子会去哪里安家？\n\n---"}, {"title": "第25页｜第五小节：豌豆妈妈", "prompt": "## 第25页｜第五小节：豌豆妈妈\n\n**版面视觉**\n\n16:9全屏。阳光照着成熟豆荚，主体在右侧或中右，左侧留完整课文展示区。\n\n**展示文本**\n\n> wān dòu mā ma gèng yǒu bàn fǎ，\n> 豌豆妈妈更有办法，\n> tā ràng dòu jiá shài zài tài yáng dǐ xià。\n> 她让豆荚晒在太阳底下。\n> \n> pā de yì shēng，dòu jiá zhà kāi，\n> 啪的一声，豆荚炸开，\n> hái zi men jiù bèng zhe tiào zhe lí kāi mā ma。\n> 孩子们就蹦着跳着离开妈妈。\n\n---"}, {"title": "第26页｜豌豆传播方法", "prompt": "## 第26页｜豌豆传播方法\n\n**版面视觉**\n\n16:9比例。阳光与豆荚炸开的瞬间形成主画面，文字区干净、稳定，便于观察记录。\n\n**展示文本**\n\n> 豌豆妈妈的办法\n> \n> 自身条件：豆荚\n> 外部条件：太阳\n> 传播方式：炸开\n> 孩子状态：蹦着跳着离开妈妈\n\n---"}, {"title": "第27页｜理解“炸开”", "prompt": "## 第27页｜理解“炸开”\n\n**版面视觉**\n\n16:9比例。动态爆开的定格画面，搭配低纹理背景，突出关键字词。\n\n**展示文本**\n\n> 炸开\n> \n> “炸开”和“打开”不一样。\n> \n> 打开：慢慢分开\n> 炸开：一下子裂开，力量很大\n> \n> “啪”要读得短促响亮。\n\n---"}, {"title": "第28页｜豌豆精读补充：太阳和变化", "prompt": "## 第28页｜豌豆精读补充：太阳和变化\n\n**版面视觉**\n\n16:9比例。豆荚在阳光下逐渐成熟，再到炸开的过程分阶段呈现。画面明亮、层次清楚，便于学生把“条件”和“变化”对应起来。\n\n**展示文本**\n\n> 豌豆妈妈的办法妙在哪里？\n> \n> 晒在太阳底下\n> \n> 啪的一声\n> \n> 豆荚炸开\n> \n> 蹦着跳着离开妈妈\n> \n> 先说条件，\n> 再说变化。\n\n---"}, {"title": "第29页｜第二课时朗读指导", "prompt": "## 第29页｜第二课时朗读指导\n\n**版面视觉**\n\n16:9全屏。自然背景柔和统一，中央保留完整朗读提示区。画面服务于“第四、五小节整体朗读”，不抢文字。\n\n**展示文本**\n\n> 第二课时朗读小提示\n> \n> 石榴：\n> “胆子挺大”读出可爱和机灵\n> “睡上一觉”读得稍慢一些\n> “钻出来”读出动作感\n> \n> 豌豆：\n> “更”要重读\n> “啪”读得短促响亮\n> “蹦着跳着”读得欢快一些\n\n---"}, {"title": "第30页｜第六小节：发现秘密", "prompt": "## 第30页｜第六小节：发现秘密\n\n**版面视觉**\n\n16:9全屏。背景为明亮的自然观察场景，有放大镜、草地、植物种子点缀，中央保留完整课文展示区。画面安静、清爽，重点服务于朗读原文。\n\n**展示文本**\n\n> zhí wù mā ma de bàn fǎ hěn duō hěn duō，\n> 植物妈妈的办法很多很多，\n> bú xìn nǐ jiù zǐ xì guān chá。\n> 不信你就仔细观察。\n> \n> nà lǐ yǒu xǔ xǔ duō duō de zhī shi，\n> 那里有许许多多的知识，\n> cū xīn de xiǎo péng you què dé bù dào tā。\n> 粗心的小朋友却得不到它。\n\n---"}, {"title": "第31页｜第六小节：仔细观察", "prompt": "## 第31页｜第六小节：仔细观察\n\n**版面视觉**\n\n16:9比例。左右分栏理解页，左侧可以放放大镜、植物细节图，右侧为提炼后的问题与结论区。背景轻淡、干净，集中完成最后一节的理解和多音字训练。\n\n**展示文本**\n\n> 找一找\n> \n> 很多很多\n> 许许多多\n> \n> 比一比\n> 仔细  粗心\n> \n> 多音字“得”\n> děi：就得告别妈妈\n> dé：得到  觉得  得意\n> de：跳得高  写得好\n> \n> 仔细观察，\n> 才能发现更多秘密。\n\n---"}, {"title": "第32页｜写字指导三", "prompt": "## 第32页｜写字指导三\n\n**版面视觉**\n\n16:9比例。田字格练字页，背景安静，三个字有序排布，适合先观察共同点，再逐个播放笔画动画。\n\n**展示文本**\n\n> 写字指导\n> \n> 胆  肚  识\n> \n> 先观察：\n> 左右结构\n> 左窄右宽\n> \n> “胆、肚”都和身体有关\n> “识”右边最后一笔是点\n\n---"}, {"title": "第33页｜写字指导四", "prompt": "## 第33页｜写字指导四\n\n**版面视觉**\n\n16:9比例。田字格练字页，背景简洁稳定，突出单字放大展示，适合完整播放笔画动画。\n\n**展示文本**\n\n> 写字指导\n> \n> 更\n> \n> 先观察：\n> 中间“曰”上展下收\n> 撇从中间穿出\n> 捺向右下舒展\n\n---"}, {"title": "第34页｜词语积累与运用", "prompt": "## 第34页｜词语积累与运用\n\n**版面视觉**\n\n16:9比例。词语积累页，左侧呈现词语卡片，右侧留句式练习区。背景柔和、清爽，适合课堂口头表达和简单书面运用。\n\n**展示文本**\n\n> 词语积累\n> \n> 如果  已经  告别\n> 出发  观察  知识\n> \n> 说一说\n> \n> 如果我已经长大，\n> 我就________。\n> \n> 植物妈妈的办法很多很多，\n> 我要________。\n\n---"}, {"title": "第35页｜精读发现：妈妈的准备 孩子的出发", "prompt": "## 第35页｜精读发现：妈妈的准备 孩子的出发\n\n**版面视觉**\n\n16:9比例。四种植物形成四宫格精读对照图，每格配一句关键词提示。中间或下方保留规律总结区，整体像课堂观察板书页。\n\n**展示文本**\n\n> 读一读，想一想\n> \n> 前两行写什么？\n> 妈妈做了什么准备？\n> \n> 后两行写什么？\n> 孩子怎样快乐出发？\n> \n> 蒲公英  苍耳  石榴  豌豆\n> \n> 妈妈的准备\n> 孩子的出发\n\n---"}, {"title": "第36页｜全文朗读与背诵指导", "prompt": "## 第36页｜全文朗读与背诵指导\n\n**版面视觉**\n\n16:9全屏。课文轮播背景，保持柔和留白，便于大段文本呈现。中央为朗读与背诵提示区，画面明亮有节奏感。\n\n**展示文本**\n\n> 朗读与背诵\n> \n> 第1小节读出好奇\n> 第2到5小节读出妈妈的爱\n> 读出孩子们快乐出发的样子\n> \n> 试着背一背课文\n\n---"}, {"title": "第37页｜课后题：总结全文", "prompt": "## 第37页｜课后题：总结全文\n\n**版面视觉**\n\n16:9宽屏。四种植物图和填空支架分区排布。左侧或上方展示植物小图，右侧或下方安排填空式总结框，便于学生快速梳理全文。\n\n**展示文本**\n\n> 课后题\n> \n> 课文介绍了哪几种植物？\n> 它们是怎么传播种子的？\n> \n> 蒲公英靠________传播种子。\n> 苍耳靠________传播种子。\n> 石榴靠________传播种子。\n> 豌豆靠________传播种子。\n\n---"}, {"title": "第38页｜表达迁移：仿照课文说一说", "prompt": "## 第38页｜表达迁移：仿照课文说一说\n\n**版面视觉**\n\n16:9比例。拓展表达页，留出大块句式展示区，周边点缀柳树、凤仙花、果树等轻巧插图。画面不拥挤，重在支架清楚。\n\n**展示文本**\n\n> 仿照课文说一说\n> \n> 妈妈准备了________，\n> 把它送给自己的娃娃。\n> \n> 只要________，\n> 孩子们就________。\n> \n> 可以用上：\n> 乘着风  纷纷出发\n> 蹦着跳着  炸开\n\n---"}, {"title": "第39页｜课外观察任务", "prompt": "## 第39页｜课外观察任务\n\n**版面视觉**\n\n16:9比例。课外拓展页，留出观察任务区，周边点缀柳树、凤仙花、果树、小鸟等自然元素。画面丰富但不拥挤，适合激发继续观察的兴趣。\n\n**展示文本**\n\n> 课外观察任务\n> \n> 到生活中找一找：\n> 还有哪些植物会传播种子？\n> \n> 可以观察：\n> 柳树  凤仙花  果树\n> \n> 也可以把你的发现\n> 说给家人或同学听。\n\n---"}, {"title": "第40页｜结课总结", "prompt": "## 第40页｜结课总结\n\n**版面视觉**\n\n16:9全屏。自然远景、阳光、飞散种子构成温暖收束页，文字区位于中间偏上，留白完整，画面明亮、柔和。\n\n**展示文本**\n\n> 这节课，我们知道了\n> 植物妈妈传播种子的许多办法。\n> \n> 仔细观察\n> 发现秘密\n> \n> 去大自然里，\n> 继续找一找吧！\n\n---"}];
+    const status = document.getElementById("status");
+    const board = document.getElementById("board");
+
+    function createRow(item, index) {
+      const row = document.createElement("div");
+      row.className = "row";
+      row.dataset.index = String(index);
+
+      const title = document.createElement("div");
+      title.className = "title";
+      title.textContent = item.title;
+
+      const button = document.createElement("button");
+      button.className = "copy-btn";
+      button.type = "button";
+      button.textContent = "复制";
+      button.dataset.index = String(index);
+
+      row.appendChild(title);
+      row.appendChild(button);
+      return row;
+    }
+
+    async function copyText(text) {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        return;
+      }
+      const area = document.createElement("textarea");
+      area.value = text;
+      area.setAttribute("readonly", "");
+      area.style.position = "fixed";
+      area.style.top = "-9999px";
+      document.body.appendChild(area);
+      area.focus();
+      area.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(area);
+      if (!ok) {
+        throw new Error("copy failed");
+      }
+    }
+
+    function bindRow(row, index, title, btn) {
+      btn.addEventListener("click", async () => {
+        try {
+          await copyText(rowsData[index]?.prompt || "");
+          const old = btn.textContent;
+          btn.textContent = "已复制";
+          btn.classList.add("done");
+          status.textContent = `已复制：${title}`;
+          setTimeout(() => {
+            btn.textContent = old;
+            btn.classList.remove("done");
+          }, 1200);
+        } catch (error) {
+          status.textContent = `复制失败：${title}`;
+        }
+      });
+    }
+
+    function renderRows() {
+      board.innerHTML = "";
+      rowsData.forEach((item, index) => {
+        const row = createRow(item, index);
+        const title = row.querySelector(".title").textContent || item.title;
+        const btn = row.querySelector(".copy-btn");
+        bindRow(row, index, title, btn);
+        board.appendChild(row);
+      });
+    }
+
+    renderRows();
+  </script>
+</body>
+</html>

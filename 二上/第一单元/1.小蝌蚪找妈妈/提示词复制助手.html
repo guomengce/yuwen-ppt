@@ -1,0 +1,2718 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>提示词复制助手</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f7f2;
+      --ink: #1f2a2e;
+      --muted: #687579;
+      --line: #d8dfd8;
+      --panel: #ffffff;
+      --accent: #1f7a6a;
+      --accent-2: #cf6f3d;
+      --soft: #e9f3ef;
+      --shadow: 0 3px 12px rgba(31, 42, 46, 0.05);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.65;
+    }
+    .app {
+      width: min(1180px, calc(100vw - 36px));
+      margin: 20px auto 40px;
+    }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      padding: 14px 0 12px;
+      background: linear-gradient(to bottom, var(--bg) 82%, rgba(246, 247, 242, 0));
+    }
+    .title-row {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 12px;
+    }
+    h1 {
+      margin: 0;
+      font-size: 24px;
+      letter-spacing: 0;
+    }
+    .meta {
+      margin: 2px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .tabs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .tab {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--ink);
+      padding: 9px 14px;
+      border-radius: 7px;
+      cursor: pointer;
+      font-size: 15px;
+    }
+    .tab[aria-selected="true"] {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    .tools {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .search {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 10px 12px;
+      font-size: 15px;
+      background: #fff;
+      color: var(--ink);
+    }
+    .jump, .copy-all {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 7px;
+      padding: 10px 12px;
+      font-size: 14px;
+      color: var(--ink);
+    }
+    .copy-all {
+      cursor: pointer;
+      border-color: rgba(207, 111, 61, 0.45);
+      color: #84411f;
+    }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    .section-note {
+      margin: 8px 0 14px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .page-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      margin: 8px 0;
+      overflow: hidden;
+    }
+    .page-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 12px 14px;
+      background: var(--soft);
+    }
+    h2 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 650;
+      letter-spacing: 0;
+    }
+    .copy-btn {
+      flex: 0 0 auto;
+      border: 0;
+      background: var(--accent-2);
+      color: #fff;
+      border-radius: 7px;
+      padding: 10px 13px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .copy-btn.done, .copy-all.done {
+      background: #2f8f59;
+      color: #fff;
+      border-color: #2f8f59;
+    }
+    .empty {
+      display: none;
+      padding: 36px;
+      text-align: center;
+      color: var(--muted);
+      border: 1px dashed var(--line);
+      border-radius: 8px;
+      background: #fff;
+      margin-top: 18px;
+    }
+    @media (max-width: 720px) {
+      .app { width: min(100vw - 20px, 1180px); margin-top: 14px; }
+      .title-row, .page-head { align-items: stretch; flex-direction: column; }
+      .tools { grid-template-columns: 1fr; }
+      .copy-btn { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <div class="topbar">
+      <div class="title-row">
+        <div>
+          <h1>提示词复制助手</h1>
+          <p class="meta">先切换版本，再按页复制。</p>
+        </div>
+      </div>
+      <nav class="tabs" role="tablist" aria-label="提示词版本">
+        <button class="tab" role="tab" aria-selected="true" aria-controls="panel-bg" data-tab="bg" type="button">02 纯背景版</button><button class="tab" role="tab" aria-selected="false" aria-controls="panel-full" data-tab="full" type="button">03 图文版</button>
+      </nav>
+      <div class="tools">
+        <input class="search" id="search" placeholder="搜索页码或标题，例如 25、鲤鱼、封面" />
+        <select class="jump" id="jump" aria-label="跳转到页码"></select>
+        <button class="copy-all" id="copyVisible" type="button">复制当前可见页</button>
+      </div>
+    </div>
+
+    
+      <section class="tab-panel active" id="panel-bg" data-panel="bg" data-description="无字背景图生成使用">
+        <p class="section-note">无字背景图生成使用｜共 40 页</p>
+        <div class="page-list">
+          
+    <article class="page-card" data-page="1" data-title="封面页">
+      <header class="page-head">
+        <h2>第 1 页｜封面页</h2>
+        <button class="copy-btn" data-copy="## 第 1 页｜封面页
+
+**背景生成锁定**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9全屏尺寸。背景为清新写实的池塘自然插画，荷叶、清水、小蝌蚪环绕画面四周。中央保留干净低纹理水面留白区，后续标题和副标题由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+
+**背景图提示词**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9全屏尺寸。背景为清新写实的池塘自然插画，荷叶、清水、小蝌蚪环绕画面四周。中央保留干净低纹理水面留白区，后续标题和副标题由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 整体明亮、清新、温暖、干净、童趣，符合二年级小学生审美，适合小学二年级语文课堂。画面不得出现任何可读文字。
+
+**构图与安全区**
+
+- 安全区类型：full-clean
+- 文字安全区：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘
+- 背景主体区：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净
+- 禁止进入区：动物主体、人物脸部、荷叶、水草、强光、高对比装饰、密集纹理不得进入中央文字区
+- 版式锁定：文字放置在：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘。背景主体放置在：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+
+**负面要求**
+
+No Chinese characters, pinyin, letters, numbers, punctuation, labels, watermarks, logos, readable book pages, visible instructional layout containers or UI text. No main subject, face, animal body, high contrast object, bright highlight, dense texture, or decorative icon may enter the text-safe area. No gloomy, dark, gray, oppressive, horror-like, uncanny, dirty, overly realistic dramatic, low-key cinematic, heavy-shadow, stormy, or melancholy style.
+
+---" type="button">复制本页 02 背景图提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="2" data-title="单元科考导入页">
+      <header class="page-head">
+        <h2>第 2 页｜单元科考导入页</h2>
+        <button class="copy-btn" data-copy="## 第 2 页｜单元科考导入页
+
+**背景生成锁定**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。背景为自然科考地图，池塘、荷叶、放大镜、脚印等元素分布在边缘。中央偏右保留干净低纹理留白区，后续任务文字层由 PPTX 添加，左侧保留小科考员观察池塘的插画。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+
+**背景图提示词**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。背景为自然科考地图，池塘、荷叶、放大镜、脚印等元素分布在边缘。中央偏右保留干净低纹理留白区，后续任务文字层由 PPTX 添加，左侧保留小科考员观察池塘的插画。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 整体明亮、清新、温暖、干净、童趣，符合二年级小学生审美，适合小学二年级语文课堂。画面不得出现任何可读文字。
+
+**构图与安全区**
+
+- 安全区类型：full-clean
+- 文字安全区：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘
+- 背景主体区：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净
+- 禁止进入区：动物主体、人物脸部、荷叶、水草、强光、高对比装饰、密集纹理不得进入中央文字区
+- 版式锁定：文字放置在：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘。背景主体放置在：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+
+**负面要求**
+
+No Chinese characters, pinyin, letters, numbers, punctuation, labels, watermarks, logos, readable book pages, visible instructional layout containers or UI text. No main subject, face, animal body, high contrast object, bright highlight, dense texture, or decorative icon may enter the text-safe area. No gloomy, dark, gray, oppressive, horror-like, uncanny, dirty, overly realistic dramatic, low-key cinematic, heavy-shadow, stormy, or melancholy style.
+
+---" type="button">复制本页 02 背景图提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="3" data-title="由题引疑页">
+      <header class="page-head">
+        <h2>第 3 页｜由题引疑页</h2>
+        <button class="copy-btn" data-copy="## 第 3 页｜由题引疑页
+
+**背景生成锁定**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9宽屏。左侧展示小蝌蚪和青蛙对比图，右侧保留干净低纹理留白区，后续问题文字层由 PPTX 添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+
+**背景图提示词**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9宽屏。左侧展示小蝌蚪和青蛙对比图，右侧保留干净低纹理留白区，后续问题文字层由 PPTX 添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 整体明亮、清新、温暖、干净、童趣，符合二年级小学生审美，适合小学二年级语文课堂。画面不得出现任何可读文字。
+
+**构图与安全区**
+
+- 安全区类型：right
+- 文字安全区：右侧 42% 宽度为文字安全区，距右边和上下边至少 6%，使用干净低纹理留白区或干净水面
+- 背景主体区：左侧 58% 为背景主体区，角色、动作、场景细节集中在左侧和边缘
+- 禁止进入区：青蛙、小蝌蚪、乌龟、鲤鱼、荷叶、水草、强光、密集水波不得进入右侧文字安全区
+- 版式锁定：文字放置在：右侧 42% 宽度为文字安全区，距右边和上下边至少 6%，使用干净低纹理留白区或干净水面。背景主体放置在：左侧 58% 为背景主体区，角色、动作、场景细节集中在左侧和边缘。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+
+**负面要求**
+
+No Chinese characters, pinyin, letters, numbers, punctuation, labels, watermarks, logos, readable book pages, visible instructional layout containers or UI text. No main subject, face, animal body, high contrast object, bright highlight, dense texture, or decorative icon may enter the text-safe area. No gloomy, dark, gray, oppressive, horror-like, uncanny, dirty, overly realistic dramatic, low-key cinematic, heavy-shadow, stormy, or melancholy style.
+
+---" type="button">复制本页 02 背景图提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="4" data-title="初读自学要求页">
+      <header class="page-head">
+        <h2>第 4 页｜初读自学要求页</h2>
+        <button class="copy-btn" data-copy="## 第 4 页｜初读自学要求页
+
+**背景生成锁定**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。背景为浅绿色池塘边学习场景。中央保留干净低纹理留白区，后续文字层由 PPTX 添加，右下角放置小科考员图标。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+
+**背景图提示词**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。背景为浅绿色池塘边学习场景。中央保留干净低纹理留白区，后续文字层由 PPTX 添加，右下角放置小科考员图标。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 整体明亮、清新、温暖、干净、童趣，符合二年级小学生审美，适合小学二年级语文课堂。画面不得出现任何可读文字。
+
+**构图与安全区**
+
+- 安全区类型：center
+- 文字安全区：中央 60% 宽度、48% 高度为文字安全区，四周至少 6% 留白，使用干净低纹理留白区
+- 背景主体区：背景主体和装饰集中在四周边缘、左下或右下，不压住中央
+- 禁止进入区：主体动物、人物脸部、强光、高对比物体、密集纹理不得进入中央文字安全区
+- 版式锁定：文字放置在：中央 60% 宽度、48% 高度为文字安全区，四周至少 6% 留白，使用干净低纹理留白区。背景主体放置在：背景主体和装饰集中在四周边缘、左下或右下，不压住中央。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+
+**负面要求**
+
+No Chinese characters, pinyin, letters, numbers, punctuation, labels, watermarks, logos, readable book pages, visible instructional layout containers or UI text. No main subject, face, animal body, high contrast object, bright highlight, dense texture, or decorative icon may enter the text-safe area. No gloomy, dark, gray, oppressive, horror-like, uncanny, dirty, overly realistic dramatic, low-key cinematic, heavy-shadow, stormy, or melancholy style.
+
+---" type="button">复制本页 02 背景图提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="5" data-title="生字总览页">
+      <header class="page-head">
+        <h2>第 5 页｜生字总览页</h2>
+        <button class="copy-btn" data-copy="## 第 5 页｜生字总览页
+
+**背景生成锁定**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。池塘荷叶背景弱化处理，中央保留大面积干净低纹理留白区，后续生字分组、颜色和文字由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+
+**背景图提示词**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。池塘荷叶背景弱化处理，中央保留大面积干净低纹理留白区，后续生字分组、颜色和文字由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 整体明亮、清新、温暖、干净、童趣，符合二年级小学生审美，适合小学二年级语文课堂。画面不得出现任何可读文字。
+
+**构图与安全区**
+
+- 安全区类型：full-clean
+- 文字安全区：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘
+- 背景主体区：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净
+- 禁止进入区：动物主体、人物脸部、荷叶、水草、强光、高对比装饰、密集纹理不得进入中央文字区
+- 版式锁定：文字放置在：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘。背景主体放置在：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+
+**负面要求**
+
+No Chinese characters, pinyin, letters, numbers, punctuation, labels, watermarks, logos, readable book pages, visible instructional layout containers or UI text. No main subject, face, animal body, high contrast object, bright highlight, dense texture, or decorative icon may enter the text-safe area. No gloomy, dark, gray, oppressive, horror-like, uncanny, dirty, overly realistic dramatic, low-key cinematic, heavy-shadow, stormy, or melancholy style.
+
+---" type="button">复制本页 02 背景图提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="6" data-title="归类识字页">
+      <header class="page-head">
+        <h2>第 6 页｜归类识字页</h2>
+        <button class="copy-btn" data-copy="## 第 6 页｜归类识字页
+
+**背景生成锁定**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9宽屏。自然木色科考背景，保留左右均衡的干净低纹理留白区和底部留白；后续分栏、偏旁文字和发现规律由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+
+**背景图提示词**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9宽屏。自然木色科考背景，保留左右均衡的干净低纹理留白区和底部留白；后续分栏、偏旁文字和发现规律由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 整体明亮、清新、温暖、干净、童趣，符合二年级小学生审美，适合小学二年级语文课堂。画面不得出现任何可读文字。
+
+**构图与安全区**
+
+- 安全区类型：full-clean
+- 文字安全区：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘
+- 背景主体区：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净
+- 禁止进入区：动物主体、人物脸部、荷叶、水草、强光、高对比装饰、密集纹理不得进入中央文字区
+- 版式锁定：文字放置在：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘。背景主体放置在：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+
+**负面要求**
+
+No Chinese characters, pinyin, letters, numbers, punctuation, labels, watermarks, logos, readable book pages, visible instructional layout containers or UI text. No main subject, face, animal body, high contrast object, bright highlight, dense texture, or decorative icon may enter the text-safe area. No gloomy, dark, gray, oppressive, horror-like, uncanny, dirty, overly realistic dramatic, low-key cinematic, heavy-shadow, stormy, or melancholy style.
+
+---" type="button">复制本页 02 背景图提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="7" data-title="轻声与多音字预警页">
+      <header class="page-head">
+        <h2>第 7 页｜轻声与多音字预警页</h2>
+        <button class="copy-btn" data-copy="## 第 7 页｜轻声与多音字预警页
+
+**背景生成锁定**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。明亮黑板质感背景，中央保留干净低纹理留白区；后续轻声词、多音字和分区组件由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+
+**背景图提示词**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。明亮黑板质感背景，中央保留干净低纹理留白区；后续轻声词、多音字和分区组件由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 整体明亮、清新、温暖、干净、童趣，符合二年级小学生审美，适合小学二年级语文课堂。画面不得出现任何可读文字。
+
+**构图与安全区**
+
+- 安全区类型：right
+- 文字安全区：右侧 42% 宽度为文字安全区，距右边和上下边至少 6%，使用干净低纹理留白区或干净水面
+- 背景主体区：左侧 58% 为背景主体区，角色、动作、场景细节集中在左侧和边缘
+- 禁止进入区：青蛙、小蝌蚪、乌龟、鲤鱼、荷叶、水草、强光、密集水波不得进入右侧文字安全区
+- 版式锁定：文字放置在：右侧 42% 宽度为文字安全区，距右边和上下边至少 6%，使用干净低纹理留白区或干净水面。背景主体放置在：左侧 58% 为背景主体区，角色、动作、场景细节集中在左侧和边缘。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+
+**负面要求**
+
+No Chinese characters, pinyin, letters, numbers, punctuation, labels, watermarks, logos, readable book pages, visible instructional layout containers or UI text. No main subject, face, animal body, high contrast object, bright highlight, dense texture, or decorative icon may enter the text-safe area. No gloomy, dark, gray, oppressive, horror-like, uncanny, dirty, overly realistic dramatic, low-key cinematic, heavy-shadow, stormy, or melancholy style.
+
+---" type="button">复制本页 02 背景图提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="8" data-title="词语表泡泡墙页">
+      <header class="page-head">
+        <h2>第 8 页｜词语表泡泡墙页</h2>
+        <button class="copy-btn" data-copy="## 第 8 页｜词语表泡泡墙页
+
+**背景生成锁定**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。蓝天水面背景，水泡泡作为边缘轻装饰分散，中央保留干净低纹理朗读留白区；后续词语由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+
+**背景图提示词**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。蓝天水面背景，水泡泡作为边缘轻装饰分散，中央保留干净低纹理朗读留白区；后续词语由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 整体明亮、清新、温暖、干净、童趣，符合二年级小学生审美，适合小学二年级语文课堂。画面不得出现任何可读文字。
+
+**构图与安全区**
+
+- 安全区类型：full-clean
+- 文字安全区：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘
+- 背景主体区：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净
+- 禁止进入区：动物主体、人物脸部、荷叶、水草、强光、高对比装饰、密集纹理不得进入中央文字区
+- 版式锁定：文字放置在：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘。背景主体放置在：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+
+**负面要求**
+
+No Chinese characters, pinyin, letters, numbers, punctuation, labels, watermarks, logos, readable book pages, visible instructional layout containers or UI text. No main subject, face, animal body, high contrast object, bright highlight, dense texture, or decorative icon may enter the text-safe area. No gloomy, dark, gray, oppressive, horror-like, uncanny, dirty, overly realistic dramatic, low-key cinematic, heavy-shadow, stormy, or melancholy style.
+
+---" type="button">复制本页 02 背景图提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="9" data-title="学习第1自然段·观察图片页">
+      <header class="page-head">
+        <h2>第 9 页｜学习第1自然段·观察图片页</h2>
+        <button class="copy-btn" data-copy="## 第 9 页｜学习第1自然段·观察图片页
+
+**背景生成锁定**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9全屏。展示一群小蝌蚪在池塘里游的高清插图，右侧保留干净低纹理文字安全区；后续观察问题由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+
+**背景图提示词**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9全屏。展示一群小蝌蚪在池塘里游的高清插图，右侧保留干净低纹理文字安全区；后续观察问题由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 整体明亮、清新、温暖、干净、童趣，符合二年级小学生审美，适合小学二年级语文课堂。画面不得出现任何可读文字。
+
+**构图与安全区**
+
+- 安全区类型：right
+- 文字安全区：右侧 42% 宽度为文字安全区，距右边和上下边至少 6%，使用干净低纹理留白区或干净水面
+- 背景主体区：左侧 58% 为背景主体区，角色、动作、场景细节集中在左侧和边缘
+- 禁止进入区：青蛙、小蝌蚪、乌龟、鲤鱼、荷叶、水草、强光、密集水波不得进入右侧文字安全区
+- 版式锁定：文字放置在：右侧 42% 宽度为文字安全区，距右边和上下边至少 6%，使用干净低纹理留白区或干净水面。背景主体放置在：左侧 58% 为背景主体区，角色、动作、场景细节集中在左侧和边缘。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+
+**负面要求**
+
+No Chinese characters, pinyin, letters, numbers, punctuation, labels, watermarks, logos, readable book pages, visible instructional layout containers or UI text. No main subject, face, animal body, high contrast object, bright highlight, dense texture, or decorative icon may enter the text-safe area. No gloomy, dark, gray, oppressive, horror-like, uncanny, dirty, overly realistic dramatic, low-key cinematic, heavy-shadow, stormy, or melancholy style.
+
+---" type="button">复制本页 02 背景图提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="10" data-title="第1自然段圈画页">
+      <header class="page-head">
+        <h2>第 10 页｜第1自然段圈画页</h2>
+        <button class="copy-btn" data-copy="## 第 10 页｜第1自然段圈画页
+
+**背景生成锁定**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。左侧为小蝌蚪局部图，右侧保留干净低纹理文字安全区；后续第1自然段文字由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+
+**背景图提示词**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。左侧为小蝌蚪局部图，右侧保留干净低纹理文字安全区；后续第1自然段文字由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 整体明亮、清新、温暖、干净、童趣，符合二年级小学生审美，适合小学二年级语文课堂。画面不得出现任何可读文字。
+
+**构图与安全区**
+
+- 安全区类型：right
+- 文字安全区：右侧 42% 宽度为文字安全区，距右边和上下边至少 6%，使用干净低纹理留白区或干净水面
+- 背景主体区：左侧 58% 为背景主体区，角色、动作、场景细节集中在左侧和边缘
+- 禁止进入区：青蛙、小蝌蚪、乌龟、鲤鱼、荷叶、水草、强光、密集水波不得进入右侧文字安全区
+- 版式锁定：文字放置在：右侧 42% 宽度为文字安全区，距右边和上下边至少 6%，使用干净低纹理留白区或干净水面。背景主体放置在：左侧 58% 为背景主体区，角色、动作、场景细节集中在左侧和边缘。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+
+**负面要求**
+
+No Chinese characters, pinyin, letters, numbers, punctuation, labels, watermarks, logos, readable book pages, visible instructional layout containers or UI text. No main subject, face, animal body, high contrast object, bright highlight, dense texture, or decorative icon may enter the text-safe area. No gloomy, dark, gray, oppressive, horror-like, uncanny, dirty, overly realistic dramatic, low-key cinematic, heavy-shadow, stormy, or melancholy style.
+
+---" type="button">复制本页 02 背景图提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="11" data-title="动作体验·甩和游页">
+      <header class="page-head">
+        <h2>第 11 页｜动作体验·甩和游页</h2>
+        <button class="copy-btn" data-copy="## 第 11 页｜动作体验·甩和游页
+
+**背景生成锁定**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。画面左侧保留小蝌蚪摆尾动图区域，右侧保留干净低纹理文字安全区；后续动作体验文字由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+
+**背景图提示词**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。画面左侧保留小蝌蚪摆尾动图区域，右侧保留干净低纹理文字安全区；后续动作体验文字由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 整体明亮、清新、温暖、干净、童趣，符合二年级小学生审美，适合小学二年级语文课堂。画面不得出现任何可读文字。
+
+**构图与安全区**
+
+- 安全区类型：right
+- 文字安全区：右侧 42% 宽度为文字安全区，距右边和上下边至少 6%，使用干净低纹理留白区或干净水面
+- 背景主体区：左侧 58% 为背景主体区，角色、动作、场景细节集中在左侧和边缘
+- 禁止进入区：青蛙、小蝌蚪、乌龟、鲤鱼、荷叶、水草、强光、密集水波不得进入右侧文字安全区
+- 版式锁定：文字放置在：右侧 42% 宽度为文字安全区，距右边和上下边至少 6%，使用干净低纹理留白区或干净水面。背景主体放置在：左侧 58% 为背景主体区，角色、动作、场景细节集中在左侧和边缘。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+
+**负面要求**
+
+No Chinese characters, pinyin, letters, numbers, punctuation, labels, watermarks, logos, readable book pages, visible instructional layout containers or UI text. No main subject, face, animal body, high contrast object, bright highlight, dense texture, or decorative icon may enter the text-safe area. No gloomy, dark, gray, oppressive, horror-like, uncanny, dirty, overly realistic dramatic, low-key cinematic, heavy-shadow, stormy, or melancholy style.
+
+---" type="button">复制本页 02 背景图提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="12" data-title="长句停顿指导页">
+      <header class="page-head">
+        <h2>第 12 页｜长句停顿指导页</h2>
+        <button class="copy-btn" data-copy="## 第 12 页｜长句停顿指导页
+
+**背景生成锁定**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9宽屏。浅色朗读站背景，中央保留干净低纹理朗读留白区；后续第1自然段长句由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+
+**背景图提示词**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9宽屏。浅色朗读站背景，中央保留干净低纹理朗读留白区；后续第1自然段长句由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 整体明亮、清新、温暖、干净、童趣，符合二年级小学生审美，适合小学二年级语文课堂。画面不得出现任何可读文字。
+
+**构图与安全区**
+
+- 安全区类型：full-clean
+- 文字安全区：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘
+- 背景主体区：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净
+- 禁止进入区：动物主体、人物脸部、荷叶、水草、强光、高对比装饰、密集纹理不得进入中央文字区
+- 版式锁定：文字放置在：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘。背景主体放置在：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+
+**负面要求**
+
+No Chinese characters, pinyin, letters, numbers, punctuation, labels, watermarks, logos, readable book pages, visible instructional layout containers or UI text. No main subject, face, animal body, high contrast object, bright highlight, dense texture, or decorative icon may enter the text-safe area. No gloomy, dark, gray, oppressive, horror-like, uncanny, dirty, overly realistic dramatic, low-key cinematic, heavy-shadow, stormy, or melancholy style.
+
+---" type="button">复制本页 02 背景图提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="13" data-title="科考追踪：小蝌蚪会变吗">
+      <header class="page-head">
+        <h2>第 13 页｜科考追踪：小蝌蚪会变吗</h2>
+        <button class="copy-btn" data-copy="## 第 13 页｜科考追踪：小蝌蚪会变吗
+
+**背景生成锁定**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9宽屏。左侧展示第1自然段中的小蝌蚪形象，突出大脑袋、黑灰色身子、长尾巴；右侧保留干净低纹理文字安全区；后续变化追踪内容由 PPTX 文字层添加，不提前展示完整变化答案。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+
+**背景图提示词**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9宽屏。左侧展示第1自然段中的小蝌蚪形象，突出大脑袋、黑灰色身子、长尾巴；右侧保留干净低纹理文字安全区；后续变化追踪内容由 PPTX 文字层添加，不提前展示完整变化答案。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 整体明亮、清新、温暖、干净、童趣，符合二年级小学生审美，适合小学二年级语文课堂。画面不得出现任何可读文字。
+
+**构图与安全区**
+
+- 安全区类型：right
+- 文字安全区：右侧 42% 宽度为文字安全区，距右边和上下边至少 6%，使用干净低纹理留白区或干净水面
+- 背景主体区：左侧 58% 为背景主体区，角色、动作、场景细节集中在左侧和边缘
+- 禁止进入区：青蛙、小蝌蚪、乌龟、鲤鱼、荷叶、水草、强光、密集水波不得进入右侧文字安全区
+- 版式锁定：文字放置在：右侧 42% 宽度为文字安全区，距右边和上下边至少 6%，使用干净低纹理留白区或干净水面。背景主体放置在：左侧 58% 为背景主体区，角色、动作、场景细节集中在左侧和边缘。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+
+**负面要求**
+
+No Chinese characters, pinyin, letters, numbers, punctuation, labels, watermarks, logos, readable book pages, visible instructional layout containers or UI text. No main subject, face, animal body, high contrast object, bright highlight, dense texture, or decorative icon may enter the text-safe area. No gloomy, dark, gray, oppressive, horror-like, uncanny, dirty, overly realistic dramatic, low-key cinematic, heavy-shadow, stormy, or melancholy style.
+
+---" type="button">复制本页 02 背景图提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="14" data-title="带着问题继续读">
+      <header class="page-head">
+        <h2>第 14 页｜带着问题继续读</h2>
+        <button class="copy-btn" data-copy="## 第 14 页｜带着问题继续读
+
+**背景生成锁定**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。池塘小路从近处延伸到远处，远处隐约出现鲤鱼、乌龟、青蛙妈妈的剪影；右侧保留干净低纹理文字安全区，整体保留探索感和悬念感；后续追踪任务文字由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+
+**背景图提示词**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。池塘小路从近处延伸到远处，远处隐约出现鲤鱼、乌龟、青蛙妈妈的剪影；右侧保留干净低纹理文字安全区，整体保留探索感和悬念感；后续追踪任务文字由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 整体明亮、清新、温暖、干净、童趣，符合二年级小学生审美，适合小学二年级语文课堂。画面不得出现任何可读文字。
+
+**构图与安全区**
+
+- 安全区类型：full-clean
+- 文字安全区：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘
+- 背景主体区：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净
+- 禁止进入区：动物主体、人物脸部、荷叶、水草、强光、高对比装饰、密集纹理不得进入中央文字区
+- 版式锁定：文字放置在：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘。背景主体放置在：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+
+**负面要求**
+
+No Chinese characters, pinyin, letters, numbers, punctuation, labels, watermarks, logos, readable book pages, visible instructional layout containers or UI text. No main subject, face, animal body, high contrast object, bright highlight, dense texture, or decorative icon may enter the text-safe area. No gloomy, dark, gray, oppressive, horror-like, uncanny, dirty, overly realistic dramatic, low-key cinematic, heavy-shadow, stormy, or melancholy style.
+
+---" type="button">复制本页 02 背景图提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="15" data-title="科考档案：今天我们发现了什么">
+      <header class="page-head">
+        <h2>第 15 页｜科考档案：今天我们发现了什么</h2>
+        <button class="copy-btn" data-copy="## 第 15 页｜科考档案：今天我们发现了什么
+
+**背景生成锁定**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9宽屏。左侧是第1自然段的小蝌蚪观察图，右侧保留干净低纹理文字安全区；后续科考记录内容和分栏由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+
+**背景图提示词**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9宽屏。左侧是第1自然段的小蝌蚪观察图，右侧保留干净低纹理文字安全区；后续科考记录内容和分栏由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 整体明亮、清新、温暖、干净、童趣，符合二年级小学生审美，适合小学二年级语文课堂。画面不得出现任何可读文字。
+
+**构图与安全区**
+
+- 安全区类型：full-clean
+- 文字安全区：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘
+- 背景主体区：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净
+- 禁止进入区：动物主体、人物脸部、荷叶、水草、强光、高对比装饰、密集纹理不得进入中央文字区
+- 版式锁定：文字放置在：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘。背景主体放置在：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+
+**负面要求**
+
+No Chinese characters, pinyin, letters, numbers, punctuation, labels, watermarks, logos, readable book pages, visible instructional layout containers or UI text. No main subject, face, animal body, high contrast object, bright highlight, dense texture, or decorative icon may enter the text-safe area. No gloomy, dark, gray, oppressive, horror-like, uncanny, dirty, overly realistic dramatic, low-key cinematic, heavy-shadow, stormy, or melancholy style.
+
+---" type="button">复制本页 02 背景图提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="16" data-title="第一课时闯关收束页">
+      <header class="page-head">
+        <h2>第 16 页｜第一课时闯关收束页</h2>
+        <button class="copy-btn" data-copy="## 第 16 页｜第一课时闯关收束页
+
+**背景生成锁定**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9宽屏。明亮科考闯关主题背景，边缘可有无字印章式装饰，右侧保留干净低纹理文字安全区；后续任务清单和评价由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+
+**背景图提示词**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9宽屏。明亮科考闯关主题背景，边缘可有无字印章式装饰，右侧保留干净低纹理文字安全区；后续任务清单和评价由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 整体明亮、清新、温暖、干净、童趣，符合二年级小学生审美，适合小学二年级语文课堂。画面不得出现任何可读文字。
+
+**构图与安全区**
+
+- 安全区类型：full-clean
+- 文字安全区：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘
+- 背景主体区：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净
+- 禁止进入区：动物主体、人物脸部、荷叶、水草、强光、高对比装饰、密集纹理不得进入中央文字区
+- 版式锁定：文字放置在：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘。背景主体放置在：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+
+**负面要求**
+
+No Chinese characters, pinyin, letters, numbers, punctuation, labels, watermarks, logos, readable book pages, visible instructional layout containers or UI text. No main subject, face, animal body, high contrast object, bright highlight, dense texture, or decorative icon may enter the text-safe area. No gloomy, dark, gray, oppressive, horror-like, uncanny, dirty, overly realistic dramatic, low-key cinematic, heavy-shadow, stormy, or melancholy style.
+
+---" type="button">复制本页 02 背景图提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="17" data-title="写字指导一·两和成">
+      <header class="page-head">
+        <h2>第 17 页｜写字指导一·两和成</h2>
+        <button class="copy-btn" data-copy="## 第 17 页｜写字指导一·两和成
+
+**背景生成锁定**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。原木色课桌背景，中央保留干净书写展示留白区；后续书写指导组件由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+
+**背景图提示词**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。原木色课桌背景，中央保留干净书写展示留白区；后续书写指导组件由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 整体明亮、清新、温暖、干净、童趣，符合二年级小学生审美，适合小学二年级语文课堂。画面不得出现任何可读文字。
+
+**构图与安全区**
+
+- 安全区类型：full-clean
+- 文字安全区：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘
+- 背景主体区：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净
+- 禁止进入区：动物主体、人物脸部、荷叶、水草、强光、高对比装饰、密集纹理不得进入中央文字区
+- 版式锁定：文字放置在：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘。背景主体放置在：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+
+**负面要求**
+
+No Chinese characters, pinyin, letters, numbers, punctuation, labels, watermarks, logos, readable book pages, visible instructional layout containers or UI text. No main subject, face, animal body, high contrast object, bright highlight, dense texture, or decorative icon may enter the text-safe area. No gloomy, dark, gray, oppressive, horror-like, uncanny, dirty, overly realistic dramatic, low-key cinematic, heavy-shadow, stormy, or melancholy style.
+
+---" type="button">复制本页 02 背景图提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="18" data-title="写字指导二·条和宽">
+      <header class="page-head">
+        <h2>第 18 页｜写字指导二·条和宽</h2>
+        <button class="copy-btn" data-copy="## 第 18 页｜写字指导二·条和宽
+
+**背景生成锁定**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。浅色书写指导背景，中央保留干净书写展示留白区；后续书写指导组件由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+
+**背景图提示词**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。浅色书写指导背景，中央保留干净书写展示留白区；后续书写指导组件由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 整体明亮、清新、温暖、干净、童趣，符合二年级小学生审美，适合小学二年级语文课堂。画面不得出现任何可读文字。
+
+**构图与安全区**
+
+- 安全区类型：full-clean
+- 文字安全区：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘
+- 背景主体区：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净
+- 禁止进入区：动物主体、人物脸部、荷叶、水草、强光、高对比装饰、密集纹理不得进入中央文字区
+- 版式锁定：文字放置在：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘。背景主体放置在：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+
+**负面要求**
+
+No Chinese characters, pinyin, letters, numbers, punctuation, labels, watermarks, logos, readable book pages, visible instructional layout containers or UI text. No main subject, face, animal body, high contrast object, bright highlight, dense texture, or decorative icon may enter the text-safe area. No gloomy, dark, gray, oppressive, horror-like, uncanny, dirty, overly realistic dramatic, low-key cinematic, heavy-shadow, stormy, or melancholy style.
+
+---" type="button">复制本页 02 背景图提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="19" data-title="词语积累页">
+      <header class="page-head">
+        <h2>第 19 页｜词语积累页</h2>
+        <button class="copy-btn" data-copy="## 第 19 页｜词语积累页
+
+**背景生成锁定**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。明亮科考标本风背景，边缘可有无字自然标本装饰，中央保留干净低纹理留白区；后续词语组件由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+
+**背景图提示词**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。明亮科考标本风背景，边缘可有无字自然标本装饰，中央保留干净低纹理留白区；后续词语组件由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 整体明亮、清新、温暖、干净、童趣，符合二年级小学生审美，适合小学二年级语文课堂。画面不得出现任何可读文字。
+
+**构图与安全区**
+
+- 安全区类型：full-clean
+- 文字安全区：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘
+- 背景主体区：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净
+- 禁止进入区：动物主体、人物脸部、荷叶、水草、强光、高对比装饰、密集纹理不得进入中央文字区
+- 版式锁定：文字放置在：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘。背景主体放置在：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+
+**负面要求**
+
+No Chinese characters, pinyin, letters, numbers, punctuation, labels, watermarks, logos, readable book pages, visible instructional layout containers or UI text. No main subject, face, animal body, high contrast object, bright highlight, dense texture, or decorative icon may enter the text-safe area. No gloomy, dark, gray, oppressive, horror-like, uncanny, dirty, overly realistic dramatic, low-key cinematic, heavy-shadow, stormy, or melancholy style.
+
+---" type="button">复制本页 02 背景图提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="20" data-title="第一课时科考小结页">
+      <header class="page-head">
+        <h2>第 20 页｜第一课时科考小结页</h2>
+        <button class="copy-btn" data-copy="## 第 20 页｜第一课时科考小结页
+
+**背景生成锁定**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9全屏。明亮科考进度主题背景，可用无字进度线和远处探索路线作装饰；后续小结文字由 PPTX 文字层添加，避免提前呈现完整变化顺序。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+
+**背景图提示词**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9全屏。明亮科考进度主题背景，可用无字进度线和远处探索路线作装饰；后续小结文字由 PPTX 文字层添加，避免提前呈现完整变化顺序。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 整体明亮、清新、温暖、干净、童趣，符合二年级小学生审美，适合小学二年级语文课堂。画面不得出现任何可读文字。
+
+**构图与安全区**
+
+- 安全区类型：full-clean
+- 文字安全区：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘
+- 背景主体区：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净
+- 禁止进入区：动物主体、人物脸部、荷叶、水草、强光、高对比装饰、密集纹理不得进入中央文字区
+- 版式锁定：文字放置在：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘。背景主体放置在：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+
+**负面要求**
+
+No Chinese characters, pinyin, letters, numbers, punctuation, labels, watermarks, logos, readable book pages, visible instructional layout containers or UI text. No main subject, face, animal body, high contrast object, bright highlight, dense texture, or decorative icon may enter the text-safe area. No gloomy, dark, gray, oppressive, horror-like, uncanny, dirty, overly realistic dramatic, low-key cinematic, heavy-shadow, stormy, or melancholy style.
+
+---" type="button">复制本页 02 背景图提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="21" data-title="复习唤醒页">
+      <header class="page-head">
+        <h2>第 21 页｜复习唤醒页</h2>
+        <button class="copy-btn" data-copy="## 第 21 页｜复习唤醒页
+
+**背景生成锁定**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。动态池塘背景，五张变化图片按时间轴排列但遮住部分内容。右侧保留词语抢读泡泡。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+
+**背景图提示词**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。动态池塘背景，五张变化图片按时间轴排列但遮住部分内容。右侧保留词语抢读泡泡。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 整体明亮、清新、温暖、干净、童趣，符合二年级小学生审美，适合小学二年级语文课堂。画面不得出现任何可读文字。
+
+**构图与安全区**
+
+- 安全区类型：full-clean
+- 文字安全区：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘
+- 背景主体区：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净
+- 禁止进入区：动物主体、人物脸部、荷叶、水草、强光、高对比装饰、密集纹理不得进入中央文字区
+- 版式锁定：文字放置在：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘。背景主体放置在：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+
+**负面要求**
+
+No Chinese characters, pinyin, letters, numbers, punctuation, labels, watermarks, logos, readable book pages, visible instructional layout containers or UI text. No main subject, face, animal body, high contrast object, bright highlight, dense texture, or decorative icon may enter the text-safe area. No gloomy, dark, gray, oppressive, horror-like, uncanny, dirty, overly realistic dramatic, low-key cinematic, heavy-shadow, stormy, or melancholy style.
+
+---" type="button">复制本页 02 背景图提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="22" data-title="第2、3自然段任务页">
+      <header class="page-head">
+        <h2>第 22 页｜第2、3自然段任务页</h2>
+        <button class="copy-btn" data-copy="## 第 22 页｜第2、3自然段任务页
+
+**背景生成锁定**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。档案袋背景，中央设置“学习活动五”文字层组件。下方两支彩笔图标分别代表“圈遇到谁”和“画对话”。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+
+**背景图提示词**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。档案袋背景，中央设置“学习活动五”文字层组件。下方两支彩笔图标分别代表“圈遇到谁”和“画对话”。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 整体明亮、清新、温暖、干净、童趣，符合二年级小学生审美，适合小学二年级语文课堂。画面不得出现任何可读文字。
+
+**构图与安全区**
+
+- 安全区类型：full-clean
+- 文字安全区：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘
+- 背景主体区：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净
+- 禁止进入区：动物主体、人物脸部、荷叶、水草、强光、高对比装饰、密集纹理不得进入中央文字区
+- 版式锁定：文字放置在：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘。背景主体放置在：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+
+**负面要求**
+
+No Chinese characters, pinyin, letters, numbers, punctuation, labels, watermarks, logos, readable book pages, visible instructional layout containers or UI text. No main subject, face, animal body, high contrast object, bright highlight, dense texture, or decorative icon may enter the text-safe area. No gloomy, dark, gray, oppressive, horror-like, uncanny, dirty, overly realistic dramatic, low-key cinematic, heavy-shadow, stormy, or melancholy style.
+
+---" type="button">复制本页 02 背景图提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="23" data-title="第2自然段·第一次变化和遇鲤鱼">
+      <header class="page-head">
+        <h2>第 23 页｜第2自然段·第一次变化和遇鲤鱼</h2>
+        <button class="copy-btn" data-copy="## 第 23 页｜第2自然段·第一次变化和遇鲤鱼
+
+**背景生成锁定**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9宽屏。左侧展示长出后腿的小蝌蚪和鲤鱼妈妈，右侧保留干净低纹理文字安全区；后续课文句子由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+
+**背景图提示词**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9宽屏。左侧展示长出后腿的小蝌蚪和鲤鱼妈妈，右侧保留干净低纹理文字安全区；后续课文句子由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 整体明亮、清新、温暖、干净、童趣，符合二年级小学生审美，适合小学二年级语文课堂。画面不得出现任何可读文字。
+
+**构图与安全区**
+
+- 安全区类型：right
+- 文字安全区：右侧 42% 宽度为文字安全区，距右边和上下边至少 6%，使用干净低纹理留白区或干净水面
+- 背景主体区：左侧 58% 为背景主体区，角色、动作、场景细节集中在左侧和边缘
+- 禁止进入区：青蛙、小蝌蚪、乌龟、鲤鱼、荷叶、水草、强光、密集水波不得进入右侧文字安全区
+- 版式锁定：文字放置在：右侧 42% 宽度为文字安全区，距右边和上下边至少 6%，使用干净低纹理留白区或干净水面。背景主体放置在：左侧 58% 为背景主体区，角色、动作、场景细节集中在左侧和边缘。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+
+**负面要求**
+
+No Chinese characters, pinyin, letters, numbers, punctuation, labels, watermarks, logos, readable book pages, visible instructional layout containers or UI text. No main subject, face, animal body, high contrast object, bright highlight, dense texture, or decorative icon may enter the text-safe area. No gloomy, dark, gray, oppressive, horror-like, uncanny, dirty, overly realistic dramatic, low-key cinematic, heavy-shadow, stormy, or melancholy style.
+
+---" type="button">复制本页 02 背景图提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="24" data-title="随文识字·教和迎上去">
+      <header class="page-head">
+        <h2>第 24 页｜随文识字·教和迎上去</h2>
+        <button class="copy-btn" data-copy="## 第 24 页｜随文识字·教和迎上去
+
+**背景生成锁定**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。左右分栏。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+
+**背景图提示词**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。左右分栏。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 整体明亮、清新、温暖、干净、童趣，符合二年级小学生审美，适合小学二年级语文课堂。画面不得出现任何可读文字。
+
+**构图与安全区**
+
+- 安全区类型：full-clean
+- 文字安全区：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘
+- 背景主体区：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净
+- 禁止进入区：动物主体、人物脸部、荷叶、水草、强光、高对比装饰、密集纹理不得进入中央文字区
+- 版式锁定：文字放置在：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘。背景主体放置在：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+
+**负面要求**
+
+No Chinese characters, pinyin, letters, numbers, punctuation, labels, watermarks, logos, readable book pages, visible instructional layout containers or UI text. No main subject, face, animal body, high contrast object, bright highlight, dense texture, or decorative icon may enter the text-safe area. No gloomy, dark, gray, oppressive, horror-like, uncanny, dirty, overly realistic dramatic, low-key cinematic, heavy-shadow, stormy, or melancholy style.
+
+---" type="button">复制本页 02 背景图提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="25" data-title="鲤鱼线索收集页">
+      <header class="page-head">
+        <h2>第 25 页｜鲤鱼线索收集页</h2>
+        <button class="copy-btn" data-copy="## 第 25 页｜鲤鱼线索收集页
+
+**背景生成锁定**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。保留与原版式一致的线索收集留白区，左侧保留鲤鱼妈妈相关的自然场景位置；后续线索文字和收集组件由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+
+**背景图提示词**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。保留与原版式一致的线索收集留白区，左侧保留鲤鱼妈妈相关的自然场景位置；后续线索文字和收集组件由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 整体明亮、清新、温暖、干净、童趣，符合二年级小学生审美，适合小学二年级语文课堂。画面不得出现任何可读文字。
+
+**构图与安全区**
+
+- 安全区类型：left
+- 文字安全区：左侧 42% 宽度为文字安全区，距左边和上下边至少 6%，使用干净低纹理留白区或干净水面
+- 背景主体区：右侧 58% 为背景主体区，角色、动作、场景细节集中在右侧和边缘
+- 禁止进入区：青蛙、小蝌蚪、乌龟、鲤鱼、荷叶、水草、强光、密集水波不得进入左侧文字安全区
+- 版式锁定：文字放置在：左侧 42% 宽度为文字安全区，距左边和上下边至少 6%，使用干净低纹理留白区或干净水面。背景主体放置在：右侧 58% 为背景主体区，角色、动作、场景细节集中在右侧和边缘。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+
+**负面要求**
+
+No Chinese characters, pinyin, letters, numbers, punctuation, labels, watermarks, logos, readable book pages, visible instructional layout containers or UI text. No main subject, face, animal body, high contrast object, bright highlight, dense texture, or decorative icon may enter the text-safe area. No gloomy, dark, gray, oppressive, horror-like, uncanny, dirty, overly realistic dramatic, low-key cinematic, heavy-shadow, stormy, or melancholy style.
+
+---" type="button">复制本页 02 背景图提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="26" data-title="第3自然段·第二次变化和遇乌龟">
+      <header class="page-head">
+        <h2>第 26 页｜第3自然段·第二次变化和遇乌龟</h2>
+        <button class="copy-btn" data-copy="## 第 26 页｜第3自然段·第二次变化和遇乌龟
+
+**背景生成锁定**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9宽屏。左侧展示长出前腿的小蝌蚪和游动的乌龟，右侧保留干净低纹理文字安全区；后续课文句子由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+
+**背景图提示词**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9宽屏。左侧展示长出前腿的小蝌蚪和游动的乌龟，右侧保留干净低纹理文字安全区；后续课文句子由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 整体明亮、清新、温暖、干净、童趣，符合二年级小学生审美，适合小学二年级语文课堂。画面不得出现任何可读文字。
+
+**构图与安全区**
+
+- 安全区类型：right
+- 文字安全区：右侧 42% 宽度为文字安全区，距右边和上下边至少 6%，使用干净低纹理留白区或干净水面
+- 背景主体区：左侧 58% 为背景主体区，角色、动作、场景细节集中在左侧和边缘
+- 禁止进入区：青蛙、小蝌蚪、乌龟、鲤鱼、荷叶、水草、强光、密集水波不得进入右侧文字安全区
+- 版式锁定：文字放置在：右侧 42% 宽度为文字安全区，距右边和上下边至少 6%，使用干净低纹理留白区或干净水面。背景主体放置在：左侧 58% 为背景主体区，角色、动作、场景细节集中在左侧和边缘。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+
+**负面要求**
+
+No Chinese characters, pinyin, letters, numbers, punctuation, labels, watermarks, logos, readable book pages, visible instructional layout containers or UI text. No main subject, face, animal body, high contrast object, bright highlight, dense texture, or decorative icon may enter the text-safe area. No gloomy, dark, gray, oppressive, horror-like, uncanny, dirty, overly realistic dramatic, low-key cinematic, heavy-shadow, stormy, or melancholy style.
+
+---" type="button">复制本页 02 背景图提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="27" data-title="动作辨析·迎上去和追上去">
+      <header class="page-head">
+        <h2>第 27 页｜动作辨析·迎上去和追上去</h2>
+        <button class="copy-btn" data-copy="## 第 27 页｜动作辨析·迎上去和追上去
+
+**背景生成锁定**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。左边面对面相遇，右边同方向追赶。底部设置判断题“能不能换？”。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+
+**背景图提示词**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。左边面对面相遇，右边同方向追赶。底部设置判断题“能不能换？”。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 整体明亮、清新、温暖、干净、童趣，符合二年级小学生审美，适合小学二年级语文课堂。画面不得出现任何可读文字。
+
+**构图与安全区**
+
+- 安全区类型：right
+- 文字安全区：右侧 42% 宽度为文字安全区，距右边和上下边至少 6%，使用干净低纹理留白区或干净水面
+- 背景主体区：左侧 58% 为背景主体区，角色、动作、场景细节集中在左侧和边缘
+- 禁止进入区：青蛙、小蝌蚪、乌龟、鲤鱼、荷叶、水草、强光、密集水波不得进入右侧文字安全区
+- 版式锁定：文字放置在：右侧 42% 宽度为文字安全区，距右边和上下边至少 6%，使用干净低纹理留白区或干净水面。背景主体放置在：左侧 58% 为背景主体区，角色、动作、场景细节集中在左侧和边缘。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+
+**负面要求**
+
+No Chinese characters, pinyin, letters, numbers, punctuation, labels, watermarks, logos, readable book pages, visible instructional layout containers or UI text. No main subject, face, animal body, high contrast object, bright highlight, dense texture, or decorative icon may enter the text-safe area. No gloomy, dark, gray, oppressive, horror-like, uncanny, dirty, overly realistic dramatic, low-key cinematic, heavy-shadow, stormy, or melancholy style.
+
+---" type="button">复制本页 02 背景图提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="28" data-title="乌龟线索收集页">
+      <header class="page-head">
+        <h2>第 28 页｜乌龟线索收集页</h2>
+        <button class="copy-btn" data-copy="## 第 28 页｜乌龟线索收集页
+
+**背景生成锁定**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。乌龟头像在左，小蝌蚪群在右，中间保留干净低纹理文字安全区；后续对话文字由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+
+**背景图提示词**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。乌龟头像在左，小蝌蚪群在右，中间保留干净低纹理文字安全区；后续对话文字由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 整体明亮、清新、温暖、干净、童趣，符合二年级小学生审美，适合小学二年级语文课堂。画面不得出现任何可读文字。
+
+**构图与安全区**
+
+- 安全区类型：center
+- 文字安全区：中央 60% 宽度、48% 高度为文字安全区，四周至少 6% 留白，使用干净低纹理留白区
+- 背景主体区：背景主体和装饰集中在四周边缘、左下或右下，不压住中央
+- 禁止进入区：主体动物、人物脸部、强光、高对比物体、密集纹理不得进入中央文字安全区
+- 版式锁定：文字放置在：中央 60% 宽度、48% 高度为文字安全区，四周至少 6% 留白，使用干净低纹理留白区。背景主体放置在：背景主体和装饰集中在四周边缘、左下或右下，不压住中央。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+
+**负面要求**
+
+No Chinese characters, pinyin, letters, numbers, punctuation, labels, watermarks, logos, readable book pages, visible instructional layout containers or UI text. No main subject, face, animal body, high contrast object, bright highlight, dense texture, or decorative icon may enter the text-safe area. No gloomy, dark, gray, oppressive, horror-like, uncanny, dirty, overly realistic dramatic, low-key cinematic, heavy-shadow, stormy, or melancholy style.
+
+---" type="button">复制本页 02 背景图提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="29" data-title="线索整合页">
+      <header class="page-head">
+        <h2>第 29 页｜线索整合页</h2>
+        <button class="copy-btn" data-copy="## 第 29 页｜线索整合页
+
+**背景生成锁定**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9宽屏。中央保留科考线索主题的干净低纹理留白区，可用无字拼图轮廓暗示青蛙形象；后续线索和思考问题由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+
+**背景图提示词**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9宽屏。中央保留科考线索主题的干净低纹理留白区，可用无字拼图轮廓暗示青蛙形象；后续线索和思考问题由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 整体明亮、清新、温暖、干净、童趣，符合二年级小学生审美，适合小学二年级语文课堂。画面不得出现任何可读文字。
+
+**构图与安全区**
+
+- 安全区类型：center
+- 文字安全区：中央 60% 宽度、48% 高度为文字安全区，四周至少 6% 留白，使用干净低纹理留白区
+- 背景主体区：背景主体和装饰集中在四周边缘、左下或右下，不压住中央
+- 禁止进入区：主体动物、人物脸部、强光、高对比物体、密集纹理不得进入中央文字安全区
+- 版式锁定：文字放置在：中央 60% 宽度、48% 高度为文字安全区，四周至少 6% 留白，使用干净低纹理留白区。背景主体放置在：背景主体和装饰集中在四周边缘、左下或右下，不压住中央。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+
+**负面要求**
+
+No Chinese characters, pinyin, letters, numbers, punctuation, labels, watermarks, logos, readable book pages, visible instructional layout containers or UI text. No main subject, face, animal body, high contrast object, bright highlight, dense texture, or decorative icon may enter the text-safe area. No gloomy, dark, gray, oppressive, horror-like, uncanny, dirty, overly realistic dramatic, low-key cinematic, heavy-shadow, stormy, or melancholy style.
+
+---" type="button">复制本页 02 背景图提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="30" data-title="第4自然段·第三次变化和看见青蛙">
+      <header class="page-head">
+        <h2>第 30 页｜第4自然段·第三次变化和看见青蛙</h2>
+        <button class="copy-btn" data-copy="## 第 30 页｜第4自然段·第三次变化和看见青蛙
+
+**背景生成锁定**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9宽屏。左侧展示尾巴变短的小蝌蚪游向荷花，右侧展示荷叶上蹲着大青蛙。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+
+**背景图提示词**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9宽屏。左侧展示尾巴变短的小蝌蚪游向荷花，右侧展示荷叶上蹲着大青蛙。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 整体明亮、清新、温暖、干净、童趣，符合二年级小学生审美，适合小学二年级语文课堂。画面不得出现任何可读文字。
+
+**构图与安全区**
+
+- 安全区类型：right
+- 文字安全区：右侧 42% 宽度为文字安全区，距右边和上下边至少 6%，使用干净低纹理留白区或干净水面
+- 背景主体区：左侧 58% 为背景主体区，角色、动作、场景细节集中在左侧和边缘
+- 禁止进入区：青蛙、小蝌蚪、乌龟、鲤鱼、荷叶、水草、强光、密集水波不得进入右侧文字安全区
+- 版式锁定：文字放置在：右侧 42% 宽度为文字安全区，距右边和上下边至少 6%，使用干净低纹理留白区或干净水面。背景主体放置在：左侧 58% 为背景主体区，角色、动作、场景细节集中在左侧和边缘。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+
+**负面要求**
+
+No Chinese characters, pinyin, letters, numbers, punctuation, labels, watermarks, logos, readable book pages, visible instructional layout containers or UI text. No main subject, face, animal body, high contrast object, bright highlight, dense texture, or decorative icon may enter the text-safe area. No gloomy, dark, gray, oppressive, horror-like, uncanny, dirty, overly realistic dramatic, low-key cinematic, heavy-shadow, stormy, or melancholy style.
+
+---" type="button">复制本页 02 背景图提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="31" data-title="青蛙外形与动作词页">
+      <header class="page-head">
+        <h2>第 31 页｜青蛙外形与动作词页</h2>
+        <button class="copy-btn" data-copy="## 第 31 页｜青蛙外形与动作词页
+
+**背景生成锁定**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。青蛙局部图占左侧，右侧保留干净低纹理文字安全区；后续动作词组件由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+
+**背景图提示词**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。青蛙局部图占左侧，右侧保留干净低纹理文字安全区；后续动作词组件由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 整体明亮、清新、温暖、干净、童趣，符合二年级小学生审美，适合小学二年级语文课堂。画面不得出现任何可读文字。
+
+**构图与安全区**
+
+- 安全区类型：right
+- 文字安全区：右侧 42% 宽度为文字安全区，距右边和上下边至少 6%，使用干净低纹理留白区或干净水面
+- 背景主体区：左侧 58% 为背景主体区，角色、动作、场景细节集中在左侧和边缘
+- 禁止进入区：青蛙、小蝌蚪、乌龟、鲤鱼、荷叶、水草、强光、密集水波不得进入右侧文字安全区
+- 版式锁定：文字放置在：右侧 42% 宽度为文字安全区，距右边和上下边至少 6%，使用干净低纹理留白区或干净水面。背景主体放置在：左侧 58% 为背景主体区，角色、动作、场景细节集中在左侧和边缘。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+
+**负面要求**
+
+No Chinese characters, pinyin, letters, numbers, punctuation, labels, watermarks, logos, readable book pages, visible instructional layout containers or UI text. No main subject, face, animal body, high contrast object, bright highlight, dense texture, or decorative icon may enter the text-safe area. No gloomy, dark, gray, oppressive, horror-like, uncanny, dirty, overly realistic dramatic, low-key cinematic, heavy-shadow, stormy, or melancholy style.
+
+---" type="button">复制本页 02 背景图提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="32" data-title="第5自然段·母子相认对话页">
+      <header class="page-head">
+        <h2>第 32 页｜第5自然段·母子相认对话页</h2>
+        <button class="copy-btn" data-copy="## 第 32 页｜第5自然段·母子相认对话页
+
+**背景生成锁定**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。左侧为小蝌蚪终于游到青蛙妈妈身边，右侧保留干净低纹理文字安全区；后续对话文字和配色由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+
+**背景图提示词**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。左侧为小蝌蚪终于游到青蛙妈妈身边，右侧保留干净低纹理文字安全区；后续对话文字和配色由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 整体明亮、清新、温暖、干净、童趣，符合二年级小学生审美，适合小学二年级语文课堂。画面不得出现任何可读文字。
+
+**构图与安全区**
+
+- 安全区类型：right
+- 文字安全区：右侧 42% 宽度为文字安全区，距右边和上下边至少 6%，使用干净低纹理留白区或干净水面
+- 背景主体区：左侧 58% 为背景主体区，角色、动作、场景细节集中在左侧和边缘
+- 禁止进入区：青蛙、小蝌蚪、乌龟、鲤鱼、荷叶、水草、强光、密集水波不得进入右侧文字安全区
+- 版式锁定：文字放置在：右侧 42% 宽度为文字安全区，距右边和上下边至少 6%，使用干净低纹理留白区或干净水面。背景主体放置在：左侧 58% 为背景主体区，角色、动作、场景细节集中在左侧和边缘。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+
+**负面要求**
+
+No Chinese characters, pinyin, letters, numbers, punctuation, labels, watermarks, logos, readable book pages, visible instructional layout containers or UI text. No main subject, face, animal body, high contrast object, bright highlight, dense texture, or decorative icon may enter the text-safe area. No gloomy, dark, gray, oppressive, horror-like, uncanny, dirty, overly realistic dramatic, low-key cinematic, heavy-shadow, stormy, or melancholy style.
+
+---" type="button">复制本页 02 背景图提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="33" data-title="连续动作·蹬跳蹦页">
+      <header class="page-head">
+        <h2>第 33 页｜连续动作·蹬跳蹦页</h2>
+        <button class="copy-btn" data-copy="## 第 33 页｜连续动作·蹬跳蹦页
+
+**背景生成锁定**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。画面保留从左到右的三段动作节奏空间；后续动作词和分格组件由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+
+**背景图提示词**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。画面保留从左到右的三段动作节奏空间；后续动作词和分格组件由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 整体明亮、清新、温暖、干净、童趣，符合二年级小学生审美，适合小学二年级语文课堂。画面不得出现任何可读文字。
+
+**构图与安全区**
+
+- 安全区类型：center
+- 文字安全区：中央 60% 宽度、48% 高度为文字安全区，四周至少 6% 留白，使用干净低纹理留白区
+- 背景主体区：背景主体和装饰集中在四周边缘、左下或右下，不压住中央
+- 禁止进入区：主体动物、人物脸部、强光、高对比物体、密集纹理不得进入中央文字安全区
+- 版式锁定：文字放置在：中央 60% 宽度、48% 高度为文字安全区，四周至少 6% 留白，使用干净低纹理留白区。背景主体放置在：背景主体和装饰集中在四周边缘、左下或右下，不压住中央。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+
+**负面要求**
+
+No Chinese characters, pinyin, letters, numbers, punctuation, labels, watermarks, logos, readable book pages, visible instructional layout containers or UI text. No main subject, face, animal body, high contrast object, bright highlight, dense texture, or decorative icon may enter the text-safe area. No gloomy, dark, gray, oppressive, horror-like, uncanny, dirty, overly realistic dramatic, low-key cinematic, heavy-shadow, stormy, or melancholy style.
+
+---" type="button">复制本页 02 背景图提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="34" data-title="第6自然段·最终变化和生活习性页">
+      <header class="page-head">
+        <h2>第 34 页｜第6自然段·最终变化和生活习性页</h2>
+        <button class="copy-btn" data-copy="## 第 34 页｜第6自然段·最终变化和生活习性页
+
+**背景生成锁定**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9宽屏。左侧为小青蛙尾巴不见的对比图，右侧为青蛙跟着妈妈捉害虫的田园图。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+
+**背景图提示词**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9宽屏。左侧为小青蛙尾巴不见的对比图，右侧为青蛙跟着妈妈捉害虫的田园图。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 整体明亮、清新、温暖、干净、童趣，符合二年级小学生审美，适合小学二年级语文课堂。画面不得出现任何可读文字。
+
+**构图与安全区**
+
+- 安全区类型：right
+- 文字安全区：右侧 42% 宽度为文字安全区，距右边和上下边至少 6%，使用干净低纹理留白区或干净水面
+- 背景主体区：左侧 58% 为背景主体区，角色、动作、场景细节集中在左侧和边缘
+- 禁止进入区：青蛙、小蝌蚪、乌龟、鲤鱼、荷叶、水草、强光、密集水波不得进入右侧文字安全区
+- 版式锁定：文字放置在：右侧 42% 宽度为文字安全区，距右边和上下边至少 6%，使用干净低纹理留白区或干净水面。背景主体放置在：左侧 58% 为背景主体区，角色、动作、场景细节集中在左侧和边缘。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+
+**负面要求**
+
+No Chinese characters, pinyin, letters, numbers, punctuation, labels, watermarks, logos, readable book pages, visible instructional layout containers or UI text. No main subject, face, animal body, high contrast object, bright highlight, dense texture, or decorative icon may enter the text-safe area. No gloomy, dark, gray, oppressive, horror-like, uncanny, dirty, overly realistic dramatic, low-key cinematic, heavy-shadow, stormy, or melancholy style.
+
+---" type="button">复制本页 02 背景图提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="35" data-title="分角色朗读总练页">
+      <header class="page-head">
+        <h2>第 35 页｜分角色朗读总练页</h2>
+        <button class="copy-btn" data-copy="## 第 35 页｜分角色朗读总练页
+
+**背景生成锁定**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。舞台聚光灯背景，四个角色头像横向排列：小蝌蚪、鲤鱼妈妈、乌龟、青蛙妈妈。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+
+**背景图提示词**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。舞台聚光灯背景，四个角色头像横向排列：小蝌蚪、鲤鱼妈妈、乌龟、青蛙妈妈。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 整体明亮、清新、温暖、干净、童趣，符合二年级小学生审美，适合小学二年级语文课堂。画面不得出现任何可读文字。
+
+**构图与安全区**
+
+- 安全区类型：full-clean
+- 文字安全区：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘
+- 背景主体区：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净
+- 禁止进入区：动物主体、人物脸部、荷叶、水草、强光、高对比装饰、密集纹理不得进入中央文字区
+- 版式锁定：文字放置在：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘。背景主体放置在：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+
+**负面要求**
+
+No Chinese characters, pinyin, letters, numbers, punctuation, labels, watermarks, logos, readable book pages, visible instructional layout containers or UI text. No main subject, face, animal body, high contrast object, bright highlight, dense texture, or decorative icon may enter the text-safe area. No gloomy, dark, gray, oppressive, horror-like, uncanny, dirty, overly realistic dramatic, low-key cinematic, heavy-shadow, stormy, or melancholy style.
+
+---" type="button">复制本页 02 背景图提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="36" data-title="课后图片排序落实页">
+      <header class="page-head">
+        <h2>第 36 页｜课后图片排序落实页</h2>
+        <button class="copy-btn" data-copy="## 第 36 页｜课后图片排序落实页
+
+**背景生成锁定**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9宽屏。背景为科考报告台。保留科考报告台和变化排序的背景氛围，底部留出干净低纹理时间轴位置；后续图片排序组件由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+
+**背景图提示词**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9宽屏。背景为科考报告台。保留科考报告台和变化排序的背景氛围，底部留出干净低纹理时间轴位置；后续图片排序组件由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 整体明亮、清新、温暖、干净、童趣，符合二年级小学生审美，适合小学二年级语文课堂。画面不得出现任何可读文字。
+
+**构图与安全区**
+
+- 安全区类型：full-clean
+- 文字安全区：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘
+- 背景主体区：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净
+- 禁止进入区：动物主体、人物脸部、荷叶、水草、强光、高对比装饰、密集纹理不得进入中央文字区
+- 版式锁定：文字放置在：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘。背景主体放置在：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+
+**负面要求**
+
+No Chinese characters, pinyin, letters, numbers, punctuation, labels, watermarks, logos, readable book pages, visible instructional layout containers or UI text. No main subject, face, animal body, high contrast object, bright highlight, dense texture, or decorative icon may enter the text-safe area. No gloomy, dark, gray, oppressive, horror-like, uncanny, dirty, overly realistic dramatic, low-key cinematic, heavy-shadow, stormy, or melancholy style.
+
+---" type="button">复制本页 02 背景图提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="37" data-title="讲故事支架页">
+      <header class="page-head">
+        <h2>第 37 页｜讲故事支架页</h2>
+        <button class="copy-btn" data-copy="## 第 37 页｜讲故事支架页
+
+**背景生成锁定**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。保留讲故事活动背景氛围，上中下区域保持干净低纹理留白；后续图片、词语支架和句式由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+
+**背景图提示词**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。保留讲故事活动背景氛围，上中下区域保持干净低纹理留白；后续图片、词语支架和句式由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 整体明亮、清新、温暖、干净、童趣，符合二年级小学生审美，适合小学二年级语文课堂。画面不得出现任何可读文字。
+
+**构图与安全区**
+
+- 安全区类型：full-clean
+- 文字安全区：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘
+- 背景主体区：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净
+- 禁止进入区：动物主体、人物脸部、荷叶、水草、强光、高对比装饰、密集纹理不得进入中央文字区
+- 版式锁定：文字放置在：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘。背景主体放置在：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+
+**负面要求**
+
+No Chinese characters, pinyin, letters, numbers, punctuation, labels, watermarks, logos, readable book pages, visible instructional layout containers or UI text. No main subject, face, animal body, high contrast object, bright highlight, dense texture, or decorative icon may enter the text-safe area. No gloomy, dark, gray, oppressive, horror-like, uncanny, dirty, overly realistic dramatic, low-key cinematic, heavy-shadow, stormy, or melancholy style.
+
+---" type="button">复制本页 02 背景图提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="38" data-title="科考新闻发布会页">
+      <header class="page-head">
+        <h2>第 38 页｜科考新闻发布会页</h2>
+        <button class="copy-btn" data-copy="## 第 38 页｜科考新闻发布会页
+
+**背景生成锁定**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9全屏。新闻发布会背景，左侧麦克风图标，右侧保留干净低纹理文字安全区；后续讲述支架由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+
+**背景图提示词**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9全屏。新闻发布会背景，左侧麦克风图标，右侧保留干净低纹理文字安全区；后续讲述支架由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 整体明亮、清新、温暖、干净、童趣，符合二年级小学生审美，适合小学二年级语文课堂。画面不得出现任何可读文字。
+
+**构图与安全区**
+
+- 安全区类型：full-clean
+- 文字安全区：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘
+- 背景主体区：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净
+- 禁止进入区：动物主体、人物脸部、荷叶、水草、强光、高对比装饰、密集纹理不得进入中央文字区
+- 版式锁定：文字放置在：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘。背景主体放置在：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+
+**负面要求**
+
+No Chinese characters, pinyin, letters, numbers, punctuation, labels, watermarks, logos, readable book pages, visible instructional layout containers or UI text. No main subject, face, animal body, high contrast object, bright highlight, dense texture, or decorative icon may enter the text-safe area. No gloomy, dark, gray, oppressive, horror-like, uncanny, dirty, overly realistic dramatic, low-key cinematic, heavy-shadow, stormy, or melancholy style.
+
+---" type="button">复制本页 02 背景图提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="39" data-title="写字指导三·哪那短孩">
+      <header class="page-head">
+        <h2>第 39 页｜写字指导三·哪那短孩</h2>
+        <button class="copy-btn" data-copy="## 第 39 页｜写字指导三·哪那短孩
+
+**背景生成锁定**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。书法宣纸质感背景，中央保留干净书写展示留白区；后续书写指导组件由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+
+**背景图提示词**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。书法宣纸质感背景，中央保留干净书写展示留白区；后续书写指导组件由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 整体明亮、清新、温暖、干净、童趣，符合二年级小学生审美，适合小学二年级语文课堂。画面不得出现任何可读文字。
+
+**构图与安全区**
+
+- 安全区类型：full-clean
+- 文字安全区：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘
+- 背景主体区：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净
+- 禁止进入区：动物主体、人物脸部、荷叶、水草、强光、高对比装饰、密集纹理不得进入中央文字区
+- 版式锁定：文字放置在：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘。背景主体放置在：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+
+**负面要求**
+
+No Chinese characters, pinyin, letters, numbers, punctuation, labels, watermarks, logos, readable book pages, visible instructional layout containers or UI text. No main subject, face, animal body, high contrast object, bright highlight, dense texture, or decorative icon may enter the text-safe area. No gloomy, dark, gray, oppressive, horror-like, uncanny, dirty, overly realistic dramatic, low-key cinematic, heavy-shadow, stormy, or melancholy style.
+
+---" type="button">复制本页 02 背景图提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="40" data-title="结课与课外探险页">
+      <header class="page-head">
+        <h2>第 40 页｜结课与课外探险页</h2>
+        <button class="copy-btn" data-copy="## 第 40 页｜结课与课外探险页
+
+**背景生成锁定**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9全屏。明亮荷塘与田野背景，青蛙在荷叶上，远处有自然科考路线图。中央保留无字奖章式装饰位置，底部保留干净低纹理文字安全区；后续奖章文字和课外任务由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+
+**背景图提示词**
+
+16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9全屏。明亮荷塘与田野背景，青蛙在荷叶上，远处有自然科考路线图。中央保留无字奖章式装饰位置，底部保留干净低纹理文字安全区；后续奖章文字和课外任务由 PPTX 文字层添加。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 整体明亮、清新、温暖、干净、童趣，符合二年级小学生审美，适合小学二年级语文课堂。画面不得出现任何可读文字。
+
+**构图与安全区**
+
+- 安全区类型：full-clean
+- 文字安全区：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘
+- 背景主体区：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净
+- 禁止进入区：动物主体、人物脸部、荷叶、水草、强光、高对比装饰、密集纹理不得进入中央文字区
+- 版式锁定：文字放置在：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘。背景主体放置在：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+
+**负面要求**
+
+No Chinese characters, pinyin, letters, numbers, punctuation, labels, watermarks, logos, readable book pages, visible instructional layout containers or UI text. No main subject, face, animal body, high contrast object, bright highlight, dense texture, or decorative icon may enter the text-safe area. No gloomy, dark, gray, oppressive, horror-like, uncanny, dirty, overly realistic dramatic, low-key cinematic, heavy-shadow, stormy, or melancholy style.
+
+---" type="button">复制本页 02 背景图提示词</button>
+      </header>
+    </article>
+        </div>
+        <div class="empty">没有找到匹配的页面。</div>
+      </section>
+
+      <section class="tab-panel " id="panel-full" data-panel="full" data-description="带文字纯图参考页生成使用">
+        <p class="section-note">带文字纯图参考页生成使用｜共 40 页</p>
+        <div class="page-list">
+          
+    <article class="page-card" data-page="1" data-title="封面页">
+      <header class="page-head">
+        <h2>第 1 页｜封面页</h2>
+        <button class="copy-btn" data-copy="## 第 1 页｜封面页
+
+**图文参考提示词**
+
+Create a polished 16:9 pure-image elementary Chinese lesson PPT reference page for 《小蝌蚪找妈妈》. First create the exact same background composition as the locked no-text background: 16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9全屏尺寸。背景为清新写实的池塘自然插画，荷叶、清水、小蝌蚪环绕画面四周。中央预留干净半透明水波纹底板，主标题大字号居中，副标题小字号置于下方。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 Then place the page text inside the same text-safe area. Do not redesign, move, crop, or replace the background layout compared with the locked background. Use clear readable Chinese text and classroom PPT hierarchy. The visual style must be bright, fresh, warm, clean, child-friendly, and suitable for grade-2 elementary students.
+
+**页面文字**
+
+&gt; xiǎo kē dǒu zhǎo mā ma
+&gt; 小 蝌 蚪 找 妈 妈
+&gt; 大自然探秘之旅·第1站
+
+**背景与版式锁定**
+
+- 背景生成锁定：16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9全屏尺寸。背景为清新写实的池塘自然插画，荷叶、清水、小蝌蚪环绕画面四周。中央预留干净半透明水波纹底板，主标题大字号居中，副标题小字号置于下方。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+- 安全区类型：full-clean
+- 文字安全区：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘
+- 背景主体区：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净
+- 禁止进入区：动物主体、人物脸部、荷叶、水草、强光、高对比装饰、密集纹理不得进入中央文字区
+- 版式锁定：文字放置在：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘。背景主体放置在：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+- 字体层级与强调：标题最大，问题和任务次之，课文原句清晰分行；关键词可用水蓝、荷叶绿、暖橙强调，但文字位置不能离开文字安全区。
+
+---" type="button">复制本页 03 图文提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="2" data-title="单元科考导入页">
+      <header class="page-head">
+        <h2>第 2 页｜单元科考导入页</h2>
+        <button class="copy-btn" data-copy="## 第 2 页｜单元科考导入页
+
+**图文参考提示词**
+
+Create a polished 16:9 pure-image elementary Chinese lesson PPT reference page for 《小蝌蚪找妈妈》. First create the exact same background composition as the locked no-text background: 16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。背景为自然科考地图，池塘、荷叶、放大镜、脚印等元素分布在边缘。中央偏右放置半透明任务底板，左侧保留小科考员观察池塘的插画。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 Then place the page text inside the same text-safe area. Do not redesign, move, crop, or replace the background layout compared with the locked background. Use clear readable Chinese text and classroom PPT hierarchy. The visual style must be bright, fresh, warm, clean, child-friendly, and suitable for grade-2 elementary students.
+
+**页面文字**
+
+&gt; 大自然科考队出发
+&gt; 这一单元，我们要借助图片，
+&gt; 读懂大自然里的秘密。
+&gt; 今天的科考对象：小蝌蚪。
+
+**背景与版式锁定**
+
+- 背景生成锁定：16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。背景为自然科考地图，池塘、荷叶、放大镜、脚印等元素分布在边缘。中央偏右放置半透明任务底板，左侧保留小科考员观察池塘的插画。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+- 安全区类型：full-clean
+- 文字安全区：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘
+- 背景主体区：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净
+- 禁止进入区：动物主体、人物脸部、荷叶、水草、强光、高对比装饰、密集纹理不得进入中央文字区
+- 版式锁定：文字放置在：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘。背景主体放置在：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+- 字体层级与强调：标题最大，问题和任务次之，课文原句清晰分行；关键词可用水蓝、荷叶绿、暖橙强调，但文字位置不能离开文字安全区。
+
+---" type="button">复制本页 03 图文提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="3" data-title="由题引疑页">
+      <header class="page-head">
+        <h2>第 3 页｜由题引疑页</h2>
+        <button class="copy-btn" data-copy="## 第 3 页｜由题引疑页
+
+**图文参考提示词**
+
+Create a polished 16:9 pure-image elementary Chinese lesson PPT reference page for 《小蝌蚪找妈妈》. First create the exact same background composition as the locked no-text background: 16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9宽屏。左侧展示小蝌蚪和青蛙对比图，右侧为浅色问题卡片。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 Then place the page text inside the same text-safe area. Do not redesign, move, crop, or replace the background layout compared with the locked background. Use clear readable Chinese text and classroom PPT hierarchy. The visual style must be bright, fresh, warm, clean, child-friendly, and suitable for grade-2 elementary students.
+
+**页面文字**
+
+&gt; 读题想一想
+&gt; 小蝌蚪的妈妈是谁？
+&gt; 小蝌蚪是怎样长成青蛙的？
+&gt; 它们最后找到妈妈了吗？
+
+**背景与版式锁定**
+
+- 背景生成锁定：16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9宽屏。左侧展示小蝌蚪和青蛙对比图，右侧为浅色问题卡片。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+- 安全区类型：right
+- 文字安全区：右侧 42% 宽度为文字安全区，距右边和上下边至少 6%，使用浅色低纹理面板或干净水面
+- 背景主体区：左侧 58% 为背景主体区，角色、动作、场景细节集中在左侧和边缘
+- 禁止进入区：青蛙、小蝌蚪、乌龟、鲤鱼、荷叶、水草、强光、密集水波不得进入右侧文字安全区
+- 版式锁定：文字放置在：右侧 42% 宽度为文字安全区，距右边和上下边至少 6%，使用浅色低纹理面板或干净水面。背景主体放置在：左侧 58% 为背景主体区，角色、动作、场景细节集中在左侧和边缘。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+- 字体层级与强调：标题最大，问题和任务次之，课文原句清晰分行；关键词可用水蓝、荷叶绿、暖橙强调，但文字位置不能离开文字安全区。
+
+---" type="button">复制本页 03 图文提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="4" data-title="初读自学要求页">
+      <header class="page-head">
+        <h2>第 4 页｜初读自学要求页</h2>
+        <button class="copy-btn" data-copy="## 第 4 页｜初读自学要求页
+
+**图文参考提示词**
+
+Create a polished 16:9 pure-image elementary Chinese lesson PPT reference page for 《小蝌蚪找妈妈》. First create the exact same background composition as the locked no-text background: 16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。背景为浅绿色池塘边学习场景。中央大号半透明白色底板，右下角放置小科考员图标。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 Then place the page text inside the same text-safe area. Do not redesign, move, crop, or replace the background layout compared with the locked background. Use clear readable Chinese text and classroom PPT hierarchy. The visual style must be bright, fresh, warm, clean, child-friendly, and suitable for grade-2 elementary students.
+
+**页面文字**
+
+&gt; 学习活动一：读一读，认一认，评一评
+&gt; 1. 标出自然段序号。
+&gt; 2. 借助拼音读准字音，读通句子。
+&gt; 3. 同桌轮读，互相正音。
+
+**背景与版式锁定**
+
+- 背景生成锁定：16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。背景为浅绿色池塘边学习场景。中央大号半透明白色底板，右下角放置小科考员图标。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+- 安全区类型：center
+- 文字安全区：中央 60% 宽度、48% 高度为文字安全区，四周至少 6% 留白，使用浅色低纹理面板
+- 背景主体区：背景主体和装饰集中在四周边缘、左下或右下，不压住中央
+- 禁止进入区：主体动物、人物脸部、强光、高对比物体、密集纹理不得进入中央文字安全区
+- 版式锁定：文字放置在：中央 60% 宽度、48% 高度为文字安全区，四周至少 6% 留白，使用浅色低纹理面板。背景主体放置在：背景主体和装饰集中在四周边缘、左下或右下，不压住中央。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+- 字体层级与强调：标题最大，问题和任务次之，课文原句清晰分行；关键词可用水蓝、荷叶绿、暖橙强调，但文字位置不能离开文字安全区。
+
+---" type="button">复制本页 03 图文提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="5" data-title="生字总览页">
+      <header class="page-head">
+        <h2>第 5 页｜生字总览页</h2>
+        <button class="copy-btn" data-copy="## 第 5 页｜生字总览页
+
+**图文参考提示词**
+
+Create a polished 16:9 pure-image elementary Chinese lesson PPT reference page for 《小蝌蚪找妈妈》. First create the exact same background composition as the locked no-text background: 16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。池塘荷叶背景弱化处理，中央使用大面积浅色低纹理底板。16个会认字按类别分组，动作类标红，身体部位类标蓝，动物/环境/特征类标绿。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 Then place the page text inside the same text-safe area. Do not redesign, move, crop, or replace the background layout compared with the locked background. Use clear readable Chinese text and classroom PPT hierarchy. The visual style must be bright, fresh, warm, clean, child-friendly, and suitable for grade-2 elementary students.
+
+**页面文字**
+
+&gt; 第一关：认读情报
+&gt; 动作类：shuǎi 甩、yíng 迎、pī 披、dūn 蹲、gǔ 鼓、bǔ 捕、jiāo 教
+&gt; 身体部位类：nǎo 脑、dài 袋、tuǐ 腿、zuǐ 嘴、dù 肚
+&gt; 动物/环境/特征类：táng 塘、huī 灰、huó 活、guī 龟
+
+**背景与版式锁定**
+
+- 背景生成锁定：16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。池塘荷叶背景弱化处理，中央使用大面积浅色低纹理底板。16个会认字按类别分组，动作类标红，身体部位类标蓝，动物/环境/特征类标绿。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+- 安全区类型：full-clean
+- 文字安全区：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘
+- 背景主体区：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净
+- 禁止进入区：动物主体、人物脸部、荷叶、水草、强光、高对比装饰、密集纹理不得进入中央文字区
+- 版式锁定：文字放置在：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘。背景主体放置在：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+- 字体层级与强调：标题最大，问题和任务次之，课文原句清晰分行；关键词可用水蓝、荷叶绿、暖橙强调，但文字位置不能离开文字安全区。
+
+---" type="button">复制本页 03 图文提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="6" data-title="归类识字页">
+      <header class="page-head">
+        <h2>第 6 页｜归类识字页</h2>
+        <button class="copy-btn" data-copy="## 第 6 页｜归类识字页
+
+**图文参考提示词**
+
+Create a polished 16:9 pure-image elementary Chinese lesson PPT reference page for 《小蝌蚪找妈妈》. First create the exact same background composition as the locked no-text background: 16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9宽屏。木质科考展板背景。左右两栏固定分区，左栏为“虫字旁”，右栏为“月字旁”。底部预留一句发现规律。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 Then place the page text inside the same text-safe area. Do not redesign, move, crop, or replace the background layout compared with the locked background. Use clear readable Chinese text and classroom PPT hierarchy. The visual style must be bright, fresh, warm, clean, child-friendly, and suitable for grade-2 elementary students.
+
+**页面文字**
+
+&gt; 科学归类识字
+&gt; 虫字旁：kē 蝌、dǒu 蚪
+&gt; 月字旁：nǎo 脑、tuǐ 腿、dù 肚
+&gt; 我发现：偏旁能帮助我们记住字义。
+
+**背景与版式锁定**
+
+- 背景生成锁定：16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9宽屏。木质科考展板背景。左右两栏固定分区，左栏为“虫字旁”，右栏为“月字旁”。底部预留一句发现规律。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+- 安全区类型：full-clean
+- 文字安全区：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘
+- 背景主体区：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净
+- 禁止进入区：动物主体、人物脸部、荷叶、水草、强光、高对比装饰、密集纹理不得进入中央文字区
+- 版式锁定：文字放置在：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘。背景主体放置在：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+- 字体层级与强调：标题最大，问题和任务次之，课文原句清晰分行；关键词可用水蓝、荷叶绿、暖橙强调，但文字位置不能离开文字安全区。
+
+---" type="button">复制本页 03 图文提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="7" data-title="轻声与多音字预警页">
+      <header class="page-head">
+        <h2>第 7 页｜轻声与多音字预警页</h2>
+        <button class="copy-btn" data-copy="## 第 7 页｜轻声与多音字预警页
+
+**图文参考提示词**
+
+Create a polished 16:9 pure-image elementary Chinese lesson PPT reference page for 《小蝌蚪找妈妈》. First create the exact same background composition as the locked no-text background: 16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。黑板质感背景，中央两块浅色词卡区。左侧为轻声词，右侧为多音字“教”的预告。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 Then place the page text inside the same text-safe area. Do not redesign, move, crop, or replace the background layout compared with the locked background. Use clear readable Chinese text and classroom PPT hierarchy. The visual style must be bright, fresh, warm, clean, child-friendly, and suitable for grade-2 elementary students.
+
+**页面文字**
+
+&gt; 读准小提醒
+&gt; 脑袋  口袋  快活
+&gt; dai   huo 读得轻一点。
+&gt; 多音字：教
+&gt; jiāo 教小鲤鱼捕食
+&gt; jiào 教室  教师
+
+**背景与版式锁定**
+
+- 背景生成锁定：16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。黑板质感背景，中央两块浅色词卡区。左侧为轻声词，右侧为多音字“教”的预告。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+- 安全区类型：right
+- 文字安全区：右侧 42% 宽度为文字安全区，距右边和上下边至少 6%，使用浅色低纹理面板或干净水面
+- 背景主体区：左侧 58% 为背景主体区，角色、动作、场景细节集中在左侧和边缘
+- 禁止进入区：青蛙、小蝌蚪、乌龟、鲤鱼、荷叶、水草、强光、密集水波不得进入右侧文字安全区
+- 版式锁定：文字放置在：右侧 42% 宽度为文字安全区，距右边和上下边至少 6%，使用浅色低纹理面板或干净水面。背景主体放置在：左侧 58% 为背景主体区，角色、动作、场景细节集中在左侧和边缘。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+- 字体层级与强调：标题最大，问题和任务次之，课文原句清晰分行；关键词可用水蓝、荷叶绿、暖橙强调，但文字位置不能离开文字安全区。
+
+---" type="button">复制本页 03 图文提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="8" data-title="词语表泡泡墙页">
+      <header class="page-head">
+        <h2>第 8 页｜词语表泡泡墙页</h2>
+        <button class="copy-btn" data-copy="## 第 8 页｜词语表泡泡墙页
+
+**图文参考提示词**
+
+Create a polished 16:9 pure-image elementary Chinese lesson PPT reference page for 《小蝌蚪找妈妈》. First create the exact same background composition as the locked no-text background: 16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。蓝天水面背景，9个半透明水泡泡分散在画面中，中央留出朗读区。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 Then place the page text inside the same text-safe area. Do not redesign, move, crop, or replace the background layout compared with the locked background. Use clear readable Chinese text and classroom PPT hierarchy. The visual style must be bright, fresh, warm, clean, child-friendly, and suitable for grade-2 elementary students.
+
+**页面文字**
+
+&gt; 第二关：词语初探
+&gt; 身子  他们  看见  哪里  那边
+&gt; 眼睛  雪白  孩子  什么
+
+**背景与版式锁定**
+
+- 背景生成锁定：16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。蓝天水面背景，9个半透明水泡泡分散在画面中，中央留出朗读区。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+- 安全区类型：full-clean
+- 文字安全区：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘
+- 背景主体区：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净
+- 禁止进入区：动物主体、人物脸部、荷叶、水草、强光、高对比装饰、密集纹理不得进入中央文字区
+- 版式锁定：文字放置在：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘。背景主体放置在：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+- 字体层级与强调：标题最大，问题和任务次之，课文原句清晰分行；关键词可用水蓝、荷叶绿、暖橙强调，但文字位置不能离开文字安全区。
+
+---" type="button">复制本页 03 图文提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="9" data-title="学习第1自然段·观察图片页">
+      <header class="page-head">
+        <h2>第 9 页｜学习第1自然段·观察图片页</h2>
+        <button class="copy-btn" data-copy="## 第 9 页｜学习第1自然段·观察图片页
+
+**图文参考提示词**
+
+Create a polished 16:9 pure-image elementary Chinese lesson PPT reference page for 《小蝌蚪找妈妈》. First create the exact same background composition as the locked no-text background: 16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9全屏。展示一群小蝌蚪在池塘里游的高清插图，文字区只保留在右侧浅色观察卡。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 Then place the page text inside the same text-safe area. Do not redesign, move, crop, or replace the background layout compared with the locked background. Use clear readable Chinese text and classroom PPT hierarchy. The visual style must be bright, fresh, warm, clean, child-friendly, and suitable for grade-2 elementary students.
+
+**页面文字**
+
+&gt; 学习活动二：听一听，读一读，说一说
+&gt; 小蝌蚪生活在哪里？
+&gt; 小蝌蚪最初是什么样子的？
+
+**背景与版式锁定**
+
+- 背景生成锁定：16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9全屏。展示一群小蝌蚪在池塘里游的高清插图，文字区只保留在右侧浅色观察卡。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+- 安全区类型：right
+- 文字安全区：右侧 42% 宽度为文字安全区，距右边和上下边至少 6%，使用浅色低纹理面板或干净水面
+- 背景主体区：左侧 58% 为背景主体区，角色、动作、场景细节集中在左侧和边缘
+- 禁止进入区：青蛙、小蝌蚪、乌龟、鲤鱼、荷叶、水草、强光、密集水波不得进入右侧文字安全区
+- 版式锁定：文字放置在：右侧 42% 宽度为文字安全区，距右边和上下边至少 6%，使用浅色低纹理面板或干净水面。背景主体放置在：左侧 58% 为背景主体区，角色、动作、场景细节集中在左侧和边缘。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+- 字体层级与强调：标题最大，问题和任务次之，课文原句清晰分行；关键词可用水蓝、荷叶绿、暖橙强调，但文字位置不能离开文字安全区。
+
+---" type="button">复制本页 03 图文提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="10" data-title="第1自然段圈画页">
+      <header class="page-head">
+        <h2>第 10 页｜第1自然段圈画页</h2>
+        <button class="copy-btn" data-copy="## 第 10 页｜第1自然段圈画页
+
+**图文参考提示词**
+
+Create a polished 16:9 pure-image elementary Chinese lesson PPT reference page for 《小蝌蚪找妈妈》. First create the exact same background composition as the locked no-text background: 16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。左侧为小蝌蚪局部图，右侧浅色文本底板展示第1自然段。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 Then place the page text inside the same text-safe area. Do not redesign, move, crop, or replace the background layout compared with the locked background. Use clear readable Chinese text and classroom PPT hierarchy. The visual style must be bright, fresh, warm, clean, child-friendly, and suitable for grade-2 elementary students.
+
+**页面文字**
+
+&gt; 池塘里有一群小蝌蚪，
+&gt; 大大的脑袋，黑灰色的身子，
+&gt; 甩着长长的尾巴，
+&gt; 快活地游来游去。
+&gt;
+&gt; 圈一圈：大大的脑袋、黑灰色的身子、长长的尾巴
+
+**背景与版式锁定**
+
+- 背景生成锁定：16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。左侧为小蝌蚪局部图，右侧浅色文本底板展示第1自然段。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+- 安全区类型：right
+- 文字安全区：右侧 42% 宽度为文字安全区，距右边和上下边至少 6%，使用浅色低纹理面板或干净水面
+- 背景主体区：左侧 58% 为背景主体区，角色、动作、场景细节集中在左侧和边缘
+- 禁止进入区：青蛙、小蝌蚪、乌龟、鲤鱼、荷叶、水草、强光、密集水波不得进入右侧文字安全区
+- 版式锁定：文字放置在：右侧 42% 宽度为文字安全区，距右边和上下边至少 6%，使用浅色低纹理面板或干净水面。背景主体放置在：左侧 58% 为背景主体区，角色、动作、场景细节集中在左侧和边缘。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+- 字体层级与强调：标题最大，问题和任务次之，课文原句清晰分行；关键词可用水蓝、荷叶绿、暖橙强调，但文字位置不能离开文字安全区。
+
+---" type="button">复制本页 03 图文提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="11" data-title="动作体验·甩和游页">
+      <header class="page-head">
+        <h2>第 11 页｜动作体验·甩和游页</h2>
+        <button class="copy-btn" data-copy="## 第 11 页｜动作体验·甩和游页
+
+**图文参考提示词**
+
+Create a polished 16:9 pure-image elementary Chinese lesson PPT reference page for 《小蝌蚪找妈妈》. First create the exact same background composition as the locked no-text background: 16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。画面左侧保留小蝌蚪摆尾动图区域，右侧为动作体验卡。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 Then place the page text inside the same text-safe area. Do not redesign, move, crop, or replace the background layout compared with the locked background. Use clear readable Chinese text and classroom PPT hierarchy. The visual style must be bright, fresh, warm, clean, child-friendly, and suitable for grade-2 elementary students.
+
+**页面文字**
+
+&gt; 动作体验
+&gt; shuǎi zhe cháng cháng de wěi ba
+&gt; 甩 着 长 长 的 尾 巴
+&gt; kuài huo de yóu lái yóu qù
+&gt; 快 活 地 游 来 游 去
+&gt;
+&gt; 做一做，读出小蝌蚪的可爱和快活。
+
+**背景与版式锁定**
+
+- 背景生成锁定：16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。画面左侧保留小蝌蚪摆尾动图区域，右侧为动作体验卡。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+- 安全区类型：right
+- 文字安全区：右侧 42% 宽度为文字安全区，距右边和上下边至少 6%，使用浅色低纹理面板或干净水面
+- 背景主体区：左侧 58% 为背景主体区，角色、动作、场景细节集中在左侧和边缘
+- 禁止进入区：青蛙、小蝌蚪、乌龟、鲤鱼、荷叶、水草、强光、密集水波不得进入右侧文字安全区
+- 版式锁定：文字放置在：右侧 42% 宽度为文字安全区，距右边和上下边至少 6%，使用浅色低纹理面板或干净水面。背景主体放置在：左侧 58% 为背景主体区，角色、动作、场景细节集中在左侧和边缘。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+- 字体层级与强调：标题最大，问题和任务次之，课文原句清晰分行；关键词可用水蓝、荷叶绿、暖橙强调，但文字位置不能离开文字安全区。
+
+---" type="button">复制本页 03 图文提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="12" data-title="长句停顿指导页">
+      <header class="page-head">
+        <h2>第 12 页｜长句停顿指导页</h2>
+        <button class="copy-btn" data-copy="## 第 12 页｜长句停顿指导页
+
+**图文参考提示词**
+
+Create a polished 16:9 pure-image elementary Chinese lesson PPT reference page for 《小蝌蚪找妈妈》. First create the exact same background composition as the locked no-text background: 16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9宽屏。浅色朗读站背景，中央大文本框展示第1自然段长句。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 Then place the page text inside the same text-safe area. Do not redesign, move, crop, or replace the background layout compared with the locked background. Use clear readable Chinese text and classroom PPT hierarchy. The visual style must be bright, fresh, warm, clean, child-friendly, and suitable for grade-2 elementary students.
+
+**页面文字**
+
+&gt; 科考朗读站：读好停顿
+&gt; 池塘里/有一群/小蝌蚪，
+&gt; 大大的/脑袋，
+&gt; 黑灰色的/身子，
+&gt; 甩着/长长的/尾巴，
+&gt; 快活地/游来游去。
+
+**背景与版式锁定**
+
+- 背景生成锁定：16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9宽屏。浅色朗读站背景，中央大文本框展示第1自然段长句。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+- 安全区类型：full-clean
+- 文字安全区：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘
+- 背景主体区：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净
+- 禁止进入区：动物主体、人物脸部、荷叶、水草、强光、高对比装饰、密集纹理不得进入中央文字区
+- 版式锁定：文字放置在：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘。背景主体放置在：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+- 字体层级与强调：标题最大，问题和任务次之，课文原句清晰分行；关键词可用水蓝、荷叶绿、暖橙强调，但文字位置不能离开文字安全区。
+
+---" type="button">复制本页 03 图文提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="13" data-title="科考追踪：小蝌蚪会变吗">
+      <header class="page-head">
+        <h2>第 13 页｜科考追踪：小蝌蚪会变吗</h2>
+        <button class="copy-btn" data-copy="## 第 13 页｜科考追踪：小蝌蚪会变吗
+
+**图文参考提示词**
+
+Create a polished 16:9 pure-image elementary Chinese lesson PPT reference page for 《小蝌蚪找妈妈》. First create the exact same background composition as the locked no-text background: 16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9宽屏。左侧展示第1自然段中的小蝌蚪形象，突出大脑袋、黑灰色身子、长尾巴；右侧设置一张空白“变化追踪卡”，只保留待填写位置，不提前展示完整变化答案。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 Then place the page text inside the same text-safe area. Do not redesign, move, crop, or replace the background layout compared with the locked background. Use clear readable Chinese text and classroom PPT hierarchy. The visual style must be bright, fresh, warm, clean, child-friendly, and suitable for grade-2 elementary students.
+
+**页面文字**
+
+&gt; 科考追踪问题：
+&gt; 小蝌蚪后来会变成什么样？
+&gt;
+&gt; 变化追踪卡：
+&gt; 现在：大大的脑袋、黑灰色的身子、长长的尾巴
+&gt; 后来：？
+&gt; 再后来：？
+&gt; 最后：？
+
+**背景与版式锁定**
+
+- 背景生成锁定：16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9宽屏。左侧展示第1自然段中的小蝌蚪形象，突出大脑袋、黑灰色身子、长尾巴；右侧设置一张空白“变化追踪卡”，只保留待填写位置，不提前展示完整变化答案。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+- 安全区类型：right
+- 文字安全区：右侧 42% 宽度为文字安全区，距右边和上下边至少 6%，使用浅色低纹理面板或干净水面
+- 背景主体区：左侧 58% 为背景主体区，角色、动作、场景细节集中在左侧和边缘
+- 禁止进入区：青蛙、小蝌蚪、乌龟、鲤鱼、荷叶、水草、强光、密集水波不得进入右侧文字安全区
+- 版式锁定：文字放置在：右侧 42% 宽度为文字安全区，距右边和上下边至少 6%，使用浅色低纹理面板或干净水面。背景主体放置在：左侧 58% 为背景主体区，角色、动作、场景细节集中在左侧和边缘。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+- 字体层级与强调：标题最大，问题和任务次之，课文原句清晰分行；关键词可用水蓝、荷叶绿、暖橙强调，但文字位置不能离开文字安全区。
+
+---" type="button">复制本页 03 图文提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="14" data-title="带着问题继续读">
+      <header class="page-head">
+        <h2>第 14 页｜带着问题继续读</h2>
+        <button class="copy-btn" data-copy="## 第 14 页｜带着问题继续读
+
+**图文参考提示词**
+
+Create a polished 16:9 pure-image elementary Chinese lesson PPT reference page for 《小蝌蚪找妈妈》. First create the exact same background composition as the locked no-text background: 16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。池塘小路从近处延伸到远处，远处隐约出现鲤鱼、乌龟、青蛙妈妈的剪影；右侧设置“下节课追踪任务”卡片，整体保留探索感和悬念感。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 Then place the page text inside the same text-safe area. Do not redesign, move, crop, or replace the background layout compared with the locked background. Use clear readable Chinese text and classroom PPT hierarchy. The visual style must be bright, fresh, warm, clean, child-friendly, and suitable for grade-2 elementary students.
+
+**页面文字**
+
+&gt; 下节课继续追踪：
+&gt; 1. 小蝌蚪遇到了谁？
+&gt; 2. 它们听到了哪些线索？
+&gt; 3. 小蝌蚪的身体发生了哪些变化？
+
+**背景与版式锁定**
+
+- 背景生成锁定：16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。池塘小路从近处延伸到远处，远处隐约出现鲤鱼、乌龟、青蛙妈妈的剪影；右侧设置“下节课追踪任务”卡片，整体保留探索感和悬念感。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+- 安全区类型：full-clean
+- 文字安全区：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘
+- 背景主体区：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净
+- 禁止进入区：动物主体、人物脸部、荷叶、水草、强光、高对比装饰、密集纹理不得进入中央文字区
+- 版式锁定：文字放置在：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘。背景主体放置在：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+- 字体层级与强调：标题最大，问题和任务次之，课文原句清晰分行；关键词可用水蓝、荷叶绿、暖橙强调，但文字位置不能离开文字安全区。
+
+---" type="button">复制本页 03 图文提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="15" data-title="科考档案：今天我们发现了什么">
+      <header class="page-head">
+        <h2>第 15 页｜科考档案：今天我们发现了什么</h2>
+        <button class="copy-btn" data-copy="## 第 15 页｜科考档案：今天我们发现了什么
+
+**图文参考提示词**
+
+Create a polished 16:9 pure-image elementary Chinese lesson PPT reference page for 《小蝌蚪找妈妈》. First create the exact same background composition as the locked no-text background: 16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9宽屏。左侧是第1自然段的小蝌蚪观察图，右侧是科考记录单。记录单分为“样子发现”和“字词发现”两栏，画面只总结第一课时已经学过的内容。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 Then place the page text inside the same text-safe area. Do not redesign, move, crop, or replace the background layout compared with the locked background. Use clear readable Chinese text and classroom PPT hierarchy. The visual style must be bright, fresh, warm, clean, child-friendly, and suitable for grade-2 elementary students.
+
+**页面文字**
+
+&gt; 今天的科考发现：
+&gt; 小蝌蚪住在池塘里。
+&gt; 它们有大大的脑袋、黑灰色的身子、长长的尾巴。
+&gt; 它们快活地游来游去。
+&gt;
+&gt; 我还会读：
+&gt; 池塘  脑袋  灰色  快活
+
+**背景与版式锁定**
+
+- 背景生成锁定：16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9宽屏。左侧是第1自然段的小蝌蚪观察图，右侧是科考记录单。记录单分为“样子发现”和“字词发现”两栏，画面只总结第一课时已经学过的内容。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+- 安全区类型：full-clean
+- 文字安全区：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘
+- 背景主体区：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净
+- 禁止进入区：动物主体、人物脸部、荷叶、水草、强光、高对比装饰、密集纹理不得进入中央文字区
+- 版式锁定：文字放置在：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘。背景主体放置在：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+- 字体层级与强调：标题最大，问题和任务次之，课文原句清晰分行；关键词可用水蓝、荷叶绿、暖橙强调，但文字位置不能离开文字安全区。
+
+---" type="button">复制本页 03 图文提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="16" data-title="第一课时闯关收束页">
+      <header class="page-head">
+        <h2>第 16 页｜第一课时闯关收束页</h2>
+        <button class="copy-btn" data-copy="## 第 16 页｜第一课时闯关收束页
+
+**图文参考提示词**
+
+Create a polished 16:9 pure-image elementary Chinese lesson PPT reference page for 《小蝌蚪找妈妈》. First create the exact same background composition as the locked no-text background: 16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9宽屏。科考闯关板背景，左侧放置“读准字词、读通句子、说清样子”三枚印章，右侧保留简洁任务清单和星级评价区。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 Then place the page text inside the same text-safe area. Do not redesign, move, crop, or replace the background layout compared with the locked background. Use clear readable Chinese text and classroom PPT hierarchy. The visual style must be bright, fresh, warm, clean, child-friendly, and suitable for grade-2 elementary students.
+
+**页面文字**
+
+&gt; 第一课时闯关成功
+&gt; 我会读生字词。
+&gt; 我能读通第1自然段。
+&gt; 我能说清小蝌蚪最初的样子。
+&gt;
+&gt; 下节课，继续寻找青蛙妈妈！
+
+**背景与版式锁定**
+
+- 背景生成锁定：16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9宽屏。科考闯关板背景，左侧放置“读准字词、读通句子、说清样子”三枚印章，右侧保留简洁任务清单和星级评价区。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+- 安全区类型：full-clean
+- 文字安全区：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘
+- 背景主体区：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净
+- 禁止进入区：动物主体、人物脸部、荷叶、水草、强光、高对比装饰、密集纹理不得进入中央文字区
+- 版式锁定：文字放置在：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘。背景主体放置在：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+- 字体层级与强调：标题最大，问题和任务次之，课文原句清晰分行；关键词可用水蓝、荷叶绿、暖橙强调，但文字位置不能离开文字安全区。
+
+---" type="button">复制本页 03 图文提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="17" data-title="写字指导一·两和成">
+      <header class="page-head">
+        <h2>第 17 页｜写字指导一·两和成</h2>
+        <button class="copy-btn" data-copy="## 第 17 页｜写字指导一·两和成
+
+**图文参考提示词**
+
+Create a polished 16:9 pure-image elementary Chinese lesson PPT reference page for 《小蝌蚪找妈妈》. First create the exact same background composition as the locked no-text background: 16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。原木色课桌背景，中央两个大田字格。左侧写“两”，右侧写“成”。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 Then place the page text inside the same text-safe area. Do not redesign, move, crop, or replace the background layout compared with the locked background. Use clear readable Chinese text and classroom PPT hierarchy. The visual style must be bright, fresh, warm, clean, child-friendly, and suitable for grade-2 elementary students.
+
+**页面文字**
+
+&gt; 第三关：记录自然密码
+&gt; 两：两组撇和点分列竖中线两侧。
+&gt; 成：斜钩要舒展，最后一点不能漏。
+&gt;
+&gt; 评价：笔顺正确  关键笔画准确
+
+**背景与版式锁定**
+
+- 背景生成锁定：16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。原木色课桌背景，中央两个大田字格。左侧写“两”，右侧写“成”。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+- 安全区类型：full-clean
+- 文字安全区：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘
+- 背景主体区：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净
+- 禁止进入区：动物主体、人物脸部、荷叶、水草、强光、高对比装饰、密集纹理不得进入中央文字区
+- 版式锁定：文字放置在：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘。背景主体放置在：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+- 字体层级与强调：标题最大，问题和任务次之，课文原句清晰分行；关键词可用水蓝、荷叶绿、暖橙强调，但文字位置不能离开文字安全区。
+
+---" type="button">复制本页 03 图文提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="18" data-title="写字指导二·条和宽">
+      <header class="page-head">
+        <h2>第 18 页｜写字指导二·条和宽</h2>
+        <button class="copy-btn" data-copy="## 第 18 页｜写字指导二·条和宽
+
+**图文参考提示词**
+
+Create a polished 16:9 pure-image elementary Chinese lesson PPT reference page for 《小蝌蚪找妈妈》. First create the exact same background composition as the locked no-text background: 16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。浅色书写指导背景，中央两个田字格。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 Then place the page text inside the same text-safe area. Do not redesign, move, crop, or replace the background layout compared with the locked background. Use clear readable Chinese text and classroom PPT hierarchy. The visual style must be bright, fresh, warm, clean, child-friendly, and suitable for grade-2 elementary students.
+
+**页面文字**
+
+&gt; 上下结构写端正
+&gt; 条：下方不是“木”，竖钩在竖中线上。
+&gt; 宽：宝盖头要宽，“见”的竖弯钩舒展。
+&gt;
+&gt; 评价：上收下展  结构合理
+
+**背景与版式锁定**
+
+- 背景生成锁定：16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。浅色书写指导背景，中央两个田字格。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+- 安全区类型：full-clean
+- 文字安全区：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘
+- 背景主体区：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净
+- 禁止进入区：动物主体、人物脸部、荷叶、水草、强光、高对比装饰、密集纹理不得进入中央文字区
+- 版式锁定：文字放置在：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘。背景主体放置在：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+- 字体层级与强调：标题最大，问题和任务次之，课文原句清晰分行；关键词可用水蓝、荷叶绿、暖橙强调，但文字位置不能离开文字安全区。
+
+---" type="button">复制本页 03 图文提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="19" data-title="词语积累页">
+      <header class="page-head">
+        <h2>第 19 页｜词语积累页</h2>
+        <button class="copy-btn" data-copy="## 第 19 页｜词语积累页
+
+**图文参考提示词**
+
+Create a polished 16:9 pure-image elementary Chinese lesson PPT reference page for 《小蝌蚪找妈妈》. First create the exact same background composition as the locked no-text background: 16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。两组词语卡片像科考标本一样排列。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 Then place the page text inside the same text-safe area. Do not redesign, move, crop, or replace the background layout compared with the locked background. Use clear readable Chinese text and classroom PPT hierarchy. The visual style must be bright, fresh, warm, clean, child-friendly, and suitable for grade-2 elementary students.
+
+**页面文字**
+
+&gt; 读一读，记一记
+&gt; 脑袋  口袋  袋子  袋鼠
+&gt; 快活  生活  活动  活力
+&gt;
+&gt; 注意：脑袋、口袋、快活里的“袋、活”读轻声。
+
+**背景与版式锁定**
+
+- 背景生成锁定：16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。两组词语卡片像科考标本一样排列。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+- 安全区类型：full-clean
+- 文字安全区：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘
+- 背景主体区：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净
+- 禁止进入区：动物主体、人物脸部、荷叶、水草、强光、高对比装饰、密集纹理不得进入中央文字区
+- 版式锁定：文字放置在：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘。背景主体放置在：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+- 字体层级与强调：标题最大，问题和任务次之，课文原句清晰分行；关键词可用水蓝、荷叶绿、暖橙强调，但文字位置不能离开文字安全区。
+
+---" type="button">复制本页 03 图文提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="20" data-title="第一课时科考小结页">
+      <header class="page-head">
+        <h2>第 20 页｜第一课时科考小结页</h2>
+        <button class="copy-btn" data-copy="## 第 20 页｜第一课时科考小结页
+
+**图文参考提示词**
+
+Create a polished 16:9 pure-image elementary Chinese lesson PPT reference page for 《小蝌蚪找妈妈》. First create the exact same background composition as the locked no-text background: 16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9全屏。科考进度条停留在“初始样子观察完成”，远处保留“继续追踪”路标，避免提前呈现完整变化顺序。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 Then place the page text inside the same text-safe area. Do not redesign, move, crop, or replace the background layout compared with the locked background. Use clear readable Chinese text and classroom PPT hierarchy. The visual style must be bright, fresh, warm, clean, child-friendly, and suitable for grade-2 elementary students.
+
+**页面文字**
+
+&gt; 第一站科考小结
+&gt; 我知道了小蝌蚪最初的样子：
+&gt; 大大的脑袋，黑灰色的身子，长长的尾巴。
+&gt;
+&gt; 我还留下了新的追踪问题：
+&gt; 它们怎样找到妈妈？
+&gt; 它们后来会变成什么样？
+
+**背景与版式锁定**
+
+- 背景生成锁定：16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9全屏。科考进度条停留在“初始样子观察完成”，远处保留“继续追踪”路标，避免提前呈现完整变化顺序。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+- 安全区类型：full-clean
+- 文字安全区：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘
+- 背景主体区：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净
+- 禁止进入区：动物主体、人物脸部、荷叶、水草、强光、高对比装饰、密集纹理不得进入中央文字区
+- 版式锁定：文字放置在：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘。背景主体放置在：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+- 字体层级与强调：标题最大，问题和任务次之，课文原句清晰分行；关键词可用水蓝、荷叶绿、暖橙强调，但文字位置不能离开文字安全区。
+
+---" type="button">复制本页 03 图文提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="21" data-title="复习唤醒页">
+      <header class="page-head">
+        <h2>第 21 页｜复习唤醒页</h2>
+        <button class="copy-btn" data-copy="## 第 21 页｜复习唤醒页
+
+**图文参考提示词**
+
+Create a polished 16:9 pure-image elementary Chinese lesson PPT reference page for 《小蝌蚪找妈妈》. First create the exact same background composition as the locked no-text background: 16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。动态池塘背景，五张变化图片按时间轴排列但遮住部分内容。右侧保留词语抢读泡泡。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 Then place the page text inside the same text-safe area. Do not redesign, move, crop, or replace the background layout compared with the locked background. Use clear readable Chinese text and classroom PPT hierarchy. The visual style must be bright, fresh, warm, clean, child-friendly, and suitable for grade-2 elementary students.
+
+**页面文字**
+
+&gt; 迎接新挑战
+&gt; 看见  哪里  那边  眼睛  雪白  孩子  什么
+&gt;
+&gt; 说一说：小蝌蚪是怎样长成青蛙的？
+
+**背景与版式锁定**
+
+- 背景生成锁定：16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。动态池塘背景，五张变化图片按时间轴排列但遮住部分内容。右侧保留词语抢读泡泡。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+- 安全区类型：full-clean
+- 文字安全区：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘
+- 背景主体区：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净
+- 禁止进入区：动物主体、人物脸部、荷叶、水草、强光、高对比装饰、密集纹理不得进入中央文字区
+- 版式锁定：文字放置在：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘。背景主体放置在：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+- 字体层级与强调：标题最大，问题和任务次之，课文原句清晰分行；关键词可用水蓝、荷叶绿、暖橙强调，但文字位置不能离开文字安全区。
+
+---" type="button">复制本页 03 图文提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="22" data-title="第2、3自然段任务页">
+      <header class="page-head">
+        <h2>第 22 页｜第2、3自然段任务页</h2>
+        <button class="copy-btn" data-copy="## 第 22 页｜第2、3自然段任务页
+
+**图文参考提示词**
+
+Create a polished 16:9 pure-image elementary Chinese lesson PPT reference page for 《小蝌蚪找妈妈》. First create the exact same background composition as the locked no-text background: 16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。档案袋背景，中央设置“学习活动五”任务卡。下方两支彩笔图标分别代表“圈遇到谁”和“画对话”。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 Then place the page text inside the same text-safe area. Do not redesign, move, crop, or replace the background layout compared with the locked background. Use clear readable Chinese text and classroom PPT hierarchy. The visual style must be bright, fresh, warm, clean, child-friendly, and suitable for grade-2 elementary students.
+
+**页面文字**
+
+&gt; 学习活动五：找一找，画一画，读一读
+&gt; 自由读第2、3自然段。
+&gt; 圈出小蝌蚪遇到了谁。
+&gt; 用波浪线画出他们之间的对话。
+
+**背景与版式锁定**
+
+- 背景生成锁定：16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。档案袋背景，中央设置“学习活动五”任务卡。下方两支彩笔图标分别代表“圈遇到谁”和“画对话”。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+- 安全区类型：full-clean
+- 文字安全区：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘
+- 背景主体区：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净
+- 禁止进入区：动物主体、人物脸部、荷叶、水草、强光、高对比装饰、密集纹理不得进入中央文字区
+- 版式锁定：文字放置在：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘。背景主体放置在：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+- 字体层级与强调：标题最大，问题和任务次之，课文原句清晰分行；关键词可用水蓝、荷叶绿、暖橙强调，但文字位置不能离开文字安全区。
+
+---" type="button">复制本页 03 图文提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="23" data-title="第2自然段·第一次变化和遇鲤鱼">
+      <header class="page-head">
+        <h2>第 23 页｜第2自然段·第一次变化和遇鲤鱼</h2>
+        <button class="copy-btn" data-copy="## 第 23 页｜第2自然段·第一次变化和遇鲤鱼
+
+**图文参考提示词**
+
+Create a polished 16:9 pure-image elementary Chinese lesson PPT reference page for 《小蝌蚪找妈妈》. First create the exact same background composition as the locked no-text background: 16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9宽屏。左侧展示长出后腿的小蝌蚪和鲤鱼妈妈，右侧为课文句子底板。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 Then place the page text inside the same text-safe area. Do not redesign, move, crop, or replace the background layout compared with the locked background. Use clear readable Chinese text and classroom PPT hierarchy. The visual style must be bright, fresh, warm, clean, child-friendly, and suitable for grade-2 elementary students.
+
+**页面文字**
+
+&gt; 小蝌蚪游哇游，过了几天，
+&gt; 长出了两条后腿。
+&gt;
+&gt; 他们看见鲤鱼妈妈在教小鲤鱼捕食，
+&gt; 就迎上去，问：
+&gt; “鲤鱼阿姨，我们的妈妈在哪里？”
+
+**背景与版式锁定**
+
+- 背景生成锁定：16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9宽屏。左侧展示长出后腿的小蝌蚪和鲤鱼妈妈，右侧为课文句子底板。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+- 安全区类型：right
+- 文字安全区：右侧 42% 宽度为文字安全区，距右边和上下边至少 6%，使用浅色低纹理面板或干净水面
+- 背景主体区：左侧 58% 为背景主体区，角色、动作、场景细节集中在左侧和边缘
+- 禁止进入区：青蛙、小蝌蚪、乌龟、鲤鱼、荷叶、水草、强光、密集水波不得进入右侧文字安全区
+- 版式锁定：文字放置在：右侧 42% 宽度为文字安全区，距右边和上下边至少 6%，使用浅色低纹理面板或干净水面。背景主体放置在：左侧 58% 为背景主体区，角色、动作、场景细节集中在左侧和边缘。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+- 字体层级与强调：标题最大，问题和任务次之，课文原句清晰分行；关键词可用水蓝、荷叶绿、暖橙强调，但文字位置不能离开文字安全区。
+
+---" type="button">复制本页 03 图文提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="24" data-title="随文识字·教和迎上去">
+      <header class="page-head">
+        <h2>第 24 页｜随文识字·教和迎上去</h2>
+        <button class="copy-btn" data-copy="## 第 24 页｜随文识字·教和迎上去
+
+**图文参考提示词**
+
+Create a polished 16:9 pure-image elementary Chinese lesson PPT reference page for 《小蝌蚪找妈妈》. First create the exact same background composition as the locked no-text background: 16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。左右分栏。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 Then place the page text inside the same text-safe area. Do not redesign, move, crop, or replace the background layout compared with the locked background. Use clear readable Chinese text and classroom PPT hierarchy. The visual style must be bright, fresh, warm, clean, child-friendly, and suitable for grade-2 elementary students.
+
+**页面文字**
+
+&gt; 多音字：教
+&gt; jiāo：教小鲤鱼捕食
+&gt; jiào：教室  教师
+&gt;
+&gt; 动作词：迎上去
+&gt; 面对面游过去，读出有礼貌又急切的语气。
+
+**背景与版式锁定**
+
+- 背景生成锁定：16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。左右分栏。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+- 安全区类型：full-clean
+- 文字安全区：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘
+- 背景主体区：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净
+- 禁止进入区：动物主体、人物脸部、荷叶、水草、强光、高对比装饰、密集纹理不得进入中央文字区
+- 版式锁定：文字放置在：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘。背景主体放置在：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+- 字体层级与强调：标题最大，问题和任务次之，课文原句清晰分行；关键词可用水蓝、荷叶绿、暖橙强调，但文字位置不能离开文字安全区。
+
+---" type="button">复制本页 03 图文提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="25" data-title="鲤鱼线索收集页">
+      <header class="page-head">
+        <h2>第 25 页｜鲤鱼线索收集页</h2>
+        <button class="copy-btn" data-copy="## 第 25 页｜鲤鱼线索收集页
+
+**图文参考提示词**
+
+Create a polished 16:9 pure-image elementary Chinese lesson PPT reference page for 《小蝌蚪找妈妈》. First create the exact same background composition as the locked no-text background: 16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。屏幕上方为“科考线索本”，左侧设置鲤鱼妈妈对话气泡。关键词“四条腿、宽嘴巴”盖章式落入线索本。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 Then place the page text inside the same text-safe area. Do not redesign, move, crop, or replace the background layout compared with the locked background. Use clear readable Chinese text and classroom PPT hierarchy. The visual style must be bright, fresh, warm, clean, child-friendly, and suitable for grade-2 elementary students.
+
+**页面文字**
+
+&gt; 鲤鱼妈妈说：
+&gt; “你们的妈妈四条腿，宽嘴巴。
+&gt; 你们到那边去找吧！”
+&gt;
+&gt; 线索一
+&gt; 四条腿  宽嘴巴
+
+**背景与版式锁定**
+
+- 背景生成锁定：16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。屏幕上方为“科考线索本”，左侧设置鲤鱼妈妈对话气泡。关键词“四条腿、宽嘴巴”盖章式落入线索本。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+- 安全区类型：left
+- 文字安全区：左侧 42% 宽度为文字安全区，距左边和上下边至少 6%，使用浅色低纹理面板或干净水面
+- 背景主体区：右侧 58% 为背景主体区，角色、动作、场景细节集中在右侧和边缘
+- 禁止进入区：青蛙、小蝌蚪、乌龟、鲤鱼、荷叶、水草、强光、密集水波不得进入左侧文字安全区
+- 版式锁定：文字放置在：左侧 42% 宽度为文字安全区，距左边和上下边至少 6%，使用浅色低纹理面板或干净水面。背景主体放置在：右侧 58% 为背景主体区，角色、动作、场景细节集中在右侧和边缘。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+- 字体层级与强调：标题最大，问题和任务次之，课文原句清晰分行；关键词可用水蓝、荷叶绿、暖橙强调，但文字位置不能离开文字安全区。
+
+---" type="button">复制本页 03 图文提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="26" data-title="第3自然段·第二次变化和遇乌龟">
+      <header class="page-head">
+        <h2>第 26 页｜第3自然段·第二次变化和遇乌龟</h2>
+        <button class="copy-btn" data-copy="## 第 26 页｜第3自然段·第二次变化和遇乌龟
+
+**图文参考提示词**
+
+Create a polished 16:9 pure-image elementary Chinese lesson PPT reference page for 《小蝌蚪找妈妈》. First create the exact same background composition as the locked no-text background: 16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9宽屏。左侧展示长出前腿的小蝌蚪和游动的乌龟，右侧为课文句子底板。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 Then place the page text inside the same text-safe area. Do not redesign, move, crop, or replace the background layout compared with the locked background. Use clear readable Chinese text and classroom PPT hierarchy. The visual style must be bright, fresh, warm, clean, child-friendly, and suitable for grade-2 elementary students.
+
+**页面文字**
+
+&gt; 小蝌蚪游哇游，过了几天，
+&gt; 长出了两条前腿。
+&gt;
+&gt; 他们看见一只乌龟摆动着四条腿在水里游，
+&gt; 连忙追上去，叫着：
+&gt; “妈妈，妈妈！”
+
+**背景与版式锁定**
+
+- 背景生成锁定：16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9宽屏。左侧展示长出前腿的小蝌蚪和游动的乌龟，右侧为课文句子底板。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+- 安全区类型：right
+- 文字安全区：右侧 42% 宽度为文字安全区，距右边和上下边至少 6%，使用浅色低纹理面板或干净水面
+- 背景主体区：左侧 58% 为背景主体区，角色、动作、场景细节集中在左侧和边缘
+- 禁止进入区：青蛙、小蝌蚪、乌龟、鲤鱼、荷叶、水草、强光、密集水波不得进入右侧文字安全区
+- 版式锁定：文字放置在：右侧 42% 宽度为文字安全区，距右边和上下边至少 6%，使用浅色低纹理面板或干净水面。背景主体放置在：左侧 58% 为背景主体区，角色、动作、场景细节集中在左侧和边缘。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+- 字体层级与强调：标题最大，问题和任务次之，课文原句清晰分行；关键词可用水蓝、荷叶绿、暖橙强调，但文字位置不能离开文字安全区。
+
+---" type="button">复制本页 03 图文提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="27" data-title="动作辨析·迎上去和追上去">
+      <header class="page-head">
+        <h2>第 27 页｜动作辨析·迎上去和追上去</h2>
+        <button class="copy-btn" data-copy="## 第 27 页｜动作辨析·迎上去和追上去
+
+**图文参考提示词**
+
+Create a polished 16:9 pure-image elementary Chinese lesson PPT reference page for 《小蝌蚪找妈妈》. First create the exact same background composition as the locked no-text background: 16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。左边面对面相遇，右边同方向追赶。底部设置判断题“能不能换？”。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 Then place the page text inside the same text-safe area. Do not redesign, move, crop, or replace the background layout compared with the locked background. Use clear readable Chinese text and classroom PPT hierarchy. The visual style must be bright, fresh, warm, clean, child-friendly, and suitable for grade-2 elementary students.
+
+**页面文字**
+
+&gt; 词语大比拼
+&gt; 迎上去：面对面游过去。
+&gt; 追上去：在后面赶上去。
+&gt;
+&gt; 这两个词能不能换？
+&gt; 不能。动作位置不一样，心情也不一样。
+
+**背景与版式锁定**
+
+- 背景生成锁定：16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。左边面对面相遇，右边同方向追赶。底部设置判断题“能不能换？”。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+- 安全区类型：right
+- 文字安全区：右侧 42% 宽度为文字安全区，距右边和上下边至少 6%，使用浅色低纹理面板或干净水面
+- 背景主体区：左侧 58% 为背景主体区，角色、动作、场景细节集中在左侧和边缘
+- 禁止进入区：青蛙、小蝌蚪、乌龟、鲤鱼、荷叶、水草、强光、密集水波不得进入右侧文字安全区
+- 版式锁定：文字放置在：右侧 42% 宽度为文字安全区，距右边和上下边至少 6%，使用浅色低纹理面板或干净水面。背景主体放置在：左侧 58% 为背景主体区，角色、动作、场景细节集中在左侧和边缘。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+- 字体层级与强调：标题最大，问题和任务次之，课文原句清晰分行；关键词可用水蓝、荷叶绿、暖橙强调，但文字位置不能离开文字安全区。
+
+---" type="button">复制本页 03 图文提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="28" data-title="乌龟线索收集页">
+      <header class="page-head">
+        <h2>第 28 页｜乌龟线索收集页</h2>
+        <button class="copy-btn" data-copy="## 第 28 页｜乌龟线索收集页
+
+**图文参考提示词**
+
+Create a polished 16:9 pure-image elementary Chinese lesson PPT reference page for 《小蝌蚪找妈妈》. First create the exact same background composition as the locked no-text background: 16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。乌龟头像在左，小蝌蚪群在右，中间为浅色对话底板。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 Then place the page text inside the same text-safe area. Do not redesign, move, crop, or replace the background layout compared with the locked background. Use clear readable Chinese text and classroom PPT hierarchy. The visual style must be bright, fresh, warm, clean, child-friendly, and suitable for grade-2 elementary students.
+
+**页面文字**
+
+&gt; 乌龟笑着说：
+&gt; “我不是你们的妈妈。
+&gt; 你们的妈妈头顶上有两只大眼睛，
+&gt; 披着绿衣裳。
+&gt; 你们到那边去找吧！”
+&gt;
+&gt; 线索二
+&gt; 大眼睛  绿衣裳
+
+**背景与版式锁定**
+
+- 背景生成锁定：16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。乌龟头像在左，小蝌蚪群在右，中间为浅色对话底板。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+- 安全区类型：center
+- 文字安全区：中央 60% 宽度、48% 高度为文字安全区，四周至少 6% 留白，使用浅色低纹理面板
+- 背景主体区：背景主体和装饰集中在四周边缘、左下或右下，不压住中央
+- 禁止进入区：主体动物、人物脸部、强光、高对比物体、密集纹理不得进入中央文字安全区
+- 版式锁定：文字放置在：中央 60% 宽度、48% 高度为文字安全区，四周至少 6% 留白，使用浅色低纹理面板。背景主体放置在：背景主体和装饰集中在四周边缘、左下或右下，不压住中央。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+- 字体层级与强调：标题最大，问题和任务次之，课文原句清晰分行；关键词可用水蓝、荷叶绿、暖橙强调，但文字位置不能离开文字安全区。
+
+---" type="button">复制本页 03 图文提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="29" data-title="线索整合页">
+      <header class="page-head">
+        <h2>第 29 页｜线索整合页</h2>
+        <button class="copy-btn" data-copy="## 第 29 页｜线索整合页
+
+**图文参考提示词**
+
+Create a polished 16:9 pure-image elementary Chinese lesson PPT reference page for 《小蝌蚪找妈妈》. First create the exact same background composition as the locked no-text background: 16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9宽屏。科考线索本占画面中央，四条线索像拼图一样合成青蛙轮廓。旁边设置思考气泡：“为什么会认错乌龟？”。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 Then place the page text inside the same text-safe area. Do not redesign, move, crop, or replace the background layout compared with the locked background. Use clear readable Chinese text and classroom PPT hierarchy. The visual style must be bright, fresh, warm, clean, child-friendly, and suitable for grade-2 elementary students.
+
+**页面文字**
+
+&gt; 科考推理
+&gt; 四条腿 + 宽嘴巴
+&gt; 大眼睛 + 绿衣裳
+&gt;
+&gt; 鲤鱼和乌龟说得对吗？
+&gt; 对，但线索还不够完整。
+&gt; 所以小蝌蚪一开始认错了妈妈。
+
+**背景与版式锁定**
+
+- 背景生成锁定：16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9宽屏。科考线索本占画面中央，四条线索像拼图一样合成青蛙轮廓。旁边设置思考气泡：“为什么会认错乌龟？”。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+- 安全区类型：center
+- 文字安全区：中央 60% 宽度、48% 高度为文字安全区，四周至少 6% 留白，使用浅色低纹理面板
+- 背景主体区：背景主体和装饰集中在四周边缘、左下或右下，不压住中央
+- 禁止进入区：主体动物、人物脸部、强光、高对比物体、密集纹理不得进入中央文字安全区
+- 版式锁定：文字放置在：中央 60% 宽度、48% 高度为文字安全区，四周至少 6% 留白，使用浅色低纹理面板。背景主体放置在：背景主体和装饰集中在四周边缘、左下或右下，不压住中央。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+- 字体层级与强调：标题最大，问题和任务次之，课文原句清晰分行；关键词可用水蓝、荷叶绿、暖橙强调，但文字位置不能离开文字安全区。
+
+---" type="button">复制本页 03 图文提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="30" data-title="第4自然段·第三次变化和看见青蛙">
+      <header class="page-head">
+        <h2>第 30 页｜第4自然段·第三次变化和看见青蛙</h2>
+        <button class="copy-btn" data-copy="## 第 30 页｜第4自然段·第三次变化和看见青蛙
+
+**图文参考提示词**
+
+Create a polished 16:9 pure-image elementary Chinese lesson PPT reference page for 《小蝌蚪找妈妈》. First create the exact same background composition as the locked no-text background: 16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9宽屏。左侧展示尾巴变短的小蝌蚪游向荷花，右侧展示荷叶上蹲着大青蛙。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 Then place the page text inside the same text-safe area. Do not redesign, move, crop, or replace the background layout compared with the locked background. Use clear readable Chinese text and classroom PPT hierarchy. The visual style must be bright, fresh, warm, clean, child-friendly, and suitable for grade-2 elementary students.
+
+**页面文字**
+
+&gt; 小蝌蚪游哇游，过了几天，
+&gt; 尾巴变短了。
+&gt;
+&gt; 他们游到荷花旁边，
+&gt; 看见荷叶上蹲着一只大青蛙。
+
+**背景与版式锁定**
+
+- 背景生成锁定：16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9宽屏。左侧展示尾巴变短的小蝌蚪游向荷花，右侧展示荷叶上蹲着大青蛙。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+- 安全区类型：right
+- 文字安全区：右侧 42% 宽度为文字安全区，距右边和上下边至少 6%，使用浅色低纹理面板或干净水面
+- 背景主体区：左侧 58% 为背景主体区，角色、动作、场景细节集中在左侧和边缘
+- 禁止进入区：青蛙、小蝌蚪、乌龟、鲤鱼、荷叶、水草、强光、密集水波不得进入右侧文字安全区
+- 版式锁定：文字放置在：右侧 42% 宽度为文字安全区，距右边和上下边至少 6%，使用浅色低纹理面板或干净水面。背景主体放置在：左侧 58% 为背景主体区，角色、动作、场景细节集中在左侧和边缘。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+- 字体层级与强调：标题最大，问题和任务次之，课文原句清晰分行；关键词可用水蓝、荷叶绿、暖橙强调，但文字位置不能离开文字安全区。
+
+---" type="button">复制本页 03 图文提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="31" data-title="青蛙外形与动作词页">
+      <header class="page-head">
+        <h2>第 31 页｜青蛙外形与动作词页</h2>
+        <button class="copy-btn" data-copy="## 第 31 页｜青蛙外形与动作词页
+
+**图文参考提示词**
+
+Create a polished 16:9 pure-image elementary Chinese lesson PPT reference page for 《小蝌蚪找妈妈》. First create the exact same background composition as the locked no-text background: 16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。青蛙局部图占左侧，右侧三张动作词卡“披、露、鼓”。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 Then place the page text inside the same text-safe area. Do not redesign, move, crop, or replace the background layout compared with the locked background. Use clear readable Chinese text and classroom PPT hierarchy. The visual style must be bright, fresh, warm, clean, child-friendly, and suitable for grade-2 elementary students.
+
+**页面文字**
+
+&gt; 披着碧绿的衣裳，
+&gt; 露着雪白的肚皮，
+&gt; 鼓着一对大眼睛。
+&gt;
+&gt; 比一比：
+&gt; 披着 / 穿着
+&gt; 露着 / 长着
+&gt; 鼓着 / 长着
+&gt;
+&gt; 作者用词真准确！
+
+**背景与版式锁定**
+
+- 背景生成锁定：16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。青蛙局部图占左侧，右侧三张动作词卡“披、露、鼓”。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+- 安全区类型：right
+- 文字安全区：右侧 42% 宽度为文字安全区，距右边和上下边至少 6%，使用浅色低纹理面板或干净水面
+- 背景主体区：左侧 58% 为背景主体区，角色、动作、场景细节集中在左侧和边缘
+- 禁止进入区：青蛙、小蝌蚪、乌龟、鲤鱼、荷叶、水草、强光、密集水波不得进入右侧文字安全区
+- 版式锁定：文字放置在：右侧 42% 宽度为文字安全区，距右边和上下边至少 6%，使用浅色低纹理面板或干净水面。背景主体放置在：左侧 58% 为背景主体区，角色、动作、场景细节集中在左侧和边缘。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+- 字体层级与强调：标题最大，问题和任务次之，课文原句清晰分行；关键词可用水蓝、荷叶绿、暖橙强调，但文字位置不能离开文字安全区。
+
+---" type="button">复制本页 03 图文提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="32" data-title="第5自然段·母子相认对话页">
+      <header class="page-head">
+        <h2>第 32 页｜第5自然段·母子相认对话页</h2>
+        <button class="copy-btn" data-copy="## 第 32 页｜第5自然段·母子相认对话页
+
+**图文参考提示词**
+
+Create a polished 16:9 pure-image elementary Chinese lesson PPT reference page for 《小蝌蚪找妈妈》. First create the exact same background composition as the locked no-text background: 16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。左侧为小蝌蚪终于游到青蛙妈妈身边，右侧为对话舞台。小蝌蚪话语用活泼色，青蛙妈妈话语用温柔色。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 Then place the page text inside the same text-safe area. Do not redesign, move, crop, or replace the background layout compared with the locked background. Use clear readable Chinese text and classroom PPT hierarchy. The visual style must be bright, fresh, warm, clean, child-friendly, and suitable for grade-2 elementary students.
+
+**页面文字**
+
+&gt; 小蝌蚪游过去，叫着：
+&gt; “妈妈，妈妈！”
+&gt;
+&gt; 青蛙妈妈低头一看，笑着说：
+&gt; “好孩子，你们已经长成青蛙了，
+&gt; 快跳上来吧！”
+&gt;
+&gt; 读出：欣喜、激动、温和、关爱。
+
+**背景与版式锁定**
+
+- 背景生成锁定：16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。左侧为小蝌蚪终于游到青蛙妈妈身边，右侧为对话舞台。小蝌蚪话语用活泼色，青蛙妈妈话语用温柔色。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+- 安全区类型：right
+- 文字安全区：右侧 42% 宽度为文字安全区，距右边和上下边至少 6%，使用浅色低纹理面板或干净水面
+- 背景主体区：左侧 58% 为背景主体区，角色、动作、场景细节集中在左侧和边缘
+- 禁止进入区：青蛙、小蝌蚪、乌龟、鲤鱼、荷叶、水草、强光、密集水波不得进入右侧文字安全区
+- 版式锁定：文字放置在：右侧 42% 宽度为文字安全区，距右边和上下边至少 6%，使用浅色低纹理面板或干净水面。背景主体放置在：左侧 58% 为背景主体区，角色、动作、场景细节集中在左侧和边缘。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+- 字体层级与强调：标题最大，问题和任务次之，课文原句清晰分行；关键词可用水蓝、荷叶绿、暖橙强调，但文字位置不能离开文字安全区。
+
+---" type="button">复制本页 03 图文提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="33" data-title="连续动作·蹬跳蹦页">
+      <header class="page-head">
+        <h2>第 33 页｜连续动作·蹬跳蹦页</h2>
+        <button class="copy-btn" data-copy="## 第 33 页｜连续动作·蹬跳蹦页
+
+**图文参考提示词**
+
+Create a polished 16:9 pure-image elementary Chinese lesson PPT reference page for 《小蝌蚪找妈妈》. First create the exact same background composition as the locked no-text background: 16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。三个动作格从左到右排列：蹬、跳、蹦。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 Then place the page text inside the same text-safe area. Do not redesign, move, crop, or replace the background layout compared with the locked background. Use clear readable Chinese text and classroom PPT hierarchy. The visual style must be bright, fresh, warm, clean, child-friendly, and suitable for grade-2 elementary students.
+
+**页面文字**
+
+&gt; 他们后腿一蹬，
+&gt; 向前一跳，
+&gt; 蹦到了荷叶上。
+&gt;
+&gt; 想一想：
+&gt; “蹬、跳、蹦”能不能换顺序？
+&gt; 不能，这是一连串轻快敏捷的动作。
+
+**背景与版式锁定**
+
+- 背景生成锁定：16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。三个动作格从左到右排列：蹬、跳、蹦。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+- 安全区类型：center
+- 文字安全区：中央 60% 宽度、48% 高度为文字安全区，四周至少 6% 留白，使用浅色低纹理面板
+- 背景主体区：背景主体和装饰集中在四周边缘、左下或右下，不压住中央
+- 禁止进入区：主体动物、人物脸部、强光、高对比物体、密集纹理不得进入中央文字安全区
+- 版式锁定：文字放置在：中央 60% 宽度、48% 高度为文字安全区，四周至少 6% 留白，使用浅色低纹理面板。背景主体放置在：背景主体和装饰集中在四周边缘、左下或右下，不压住中央。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+- 字体层级与强调：标题最大，问题和任务次之，课文原句清晰分行；关键词可用水蓝、荷叶绿、暖橙强调，但文字位置不能离开文字安全区。
+
+---" type="button">复制本页 03 图文提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="34" data-title="第6自然段·最终变化和生活习性页">
+      <header class="page-head">
+        <h2>第 34 页｜第6自然段·最终变化和生活习性页</h2>
+        <button class="copy-btn" data-copy="## 第 34 页｜第6自然段·最终变化和生活习性页
+
+**图文参考提示词**
+
+Create a polished 16:9 pure-image elementary Chinese lesson PPT reference page for 《小蝌蚪找妈妈》. First create the exact same background composition as the locked no-text background: 16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9宽屏。左侧为小青蛙尾巴不见的对比图，右侧为青蛙跟着妈妈捉害虫的田园图。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 Then place the page text inside the same text-safe area. Do not redesign, move, crop, or replace the background layout compared with the locked background. Use clear readable Chinese text and classroom PPT hierarchy. The visual style must be bright, fresh, warm, clean, child-friendly, and suitable for grade-2 elementary students.
+
+**页面文字**
+
+&gt; 不知什么时候，
+&gt; 小青蛙的尾巴已经不见了。
+&gt;
+&gt; 他们跟着妈妈，
+&gt; 天天去捉害虫。
+&gt;
+&gt; 青蛙是人类的好朋友，我们要保护青蛙。
+
+**背景与版式锁定**
+
+- 背景生成锁定：16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9宽屏。左侧为小青蛙尾巴不见的对比图，右侧为青蛙跟着妈妈捉害虫的田园图。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+- 安全区类型：right
+- 文字安全区：右侧 42% 宽度为文字安全区，距右边和上下边至少 6%，使用浅色低纹理面板或干净水面
+- 背景主体区：左侧 58% 为背景主体区，角色、动作、场景细节集中在左侧和边缘
+- 禁止进入区：青蛙、小蝌蚪、乌龟、鲤鱼、荷叶、水草、强光、密集水波不得进入右侧文字安全区
+- 版式锁定：文字放置在：右侧 42% 宽度为文字安全区，距右边和上下边至少 6%，使用浅色低纹理面板或干净水面。背景主体放置在：左侧 58% 为背景主体区，角色、动作、场景细节集中在左侧和边缘。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+- 字体层级与强调：标题最大，问题和任务次之，课文原句清晰分行；关键词可用水蓝、荷叶绿、暖橙强调，但文字位置不能离开文字安全区。
+
+---" type="button">复制本页 03 图文提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="35" data-title="分角色朗读总练页">
+      <header class="page-head">
+        <h2>第 35 页｜分角色朗读总练页</h2>
+        <button class="copy-btn" data-copy="## 第 35 页｜分角色朗读总练页
+
+**图文参考提示词**
+
+Create a polished 16:9 pure-image elementary Chinese lesson PPT reference page for 《小蝌蚪找妈妈》. First create the exact same background composition as the locked no-text background: 16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。舞台聚光灯背景，四个角色头像横向排列：小蝌蚪、鲤鱼妈妈、乌龟、青蛙妈妈。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 Then place the page text inside the same text-safe area. Do not redesign, move, crop, or replace the background layout compared with the locked background. Use clear readable Chinese text and classroom PPT hierarchy. The visual style must be bright, fresh, warm, clean, child-friendly, and suitable for grade-2 elementary students.
+
+**页面文字**
+
+&gt; 分角色朗读
+&gt; 小蝌蚪：急切、有礼貌、找到妈妈时很激动
+&gt; 鲤鱼妈妈：温和提醒
+&gt; 乌龟：笑着解释
+&gt; 青蛙妈妈：亲切关爱
+&gt;
+&gt; 读正确，读通顺，读出角色语气。
+
+**背景与版式锁定**
+
+- 背景生成锁定：16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。舞台聚光灯背景，四个角色头像横向排列：小蝌蚪、鲤鱼妈妈、乌龟、青蛙妈妈。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+- 安全区类型：full-clean
+- 文字安全区：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘
+- 背景主体区：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净
+- 禁止进入区：动物主体、人物脸部、荷叶、水草、强光、高对比装饰、密集纹理不得进入中央文字区
+- 版式锁定：文字放置在：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘。背景主体放置在：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+- 字体层级与强调：标题最大，问题和任务次之，课文原句清晰分行；关键词可用水蓝、荷叶绿、暖橙强调，但文字位置不能离开文字安全区。
+
+---" type="button">复制本页 03 图文提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="36" data-title="课后图片排序落实页">
+      <header class="page-head">
+        <h2>第 36 页｜课后图片排序落实页</h2>
+        <button class="copy-btn" data-copy="## 第 36 页｜课后图片排序落实页
+
+**图文参考提示词**
+
+Create a polished 16:9 pure-image elementary Chinese lesson PPT reference page for 《小蝌蚪找妈妈》. First create the exact same background composition as the locked no-text background: 16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9宽屏。背景为科考报告台。五张变化图片打乱排布，底部是一条空白时间轴。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 Then place the page text inside the same text-safe area. Do not redesign, move, crop, or replace the background layout compared with the locked background. Use clear readable Chinese text and classroom PPT hierarchy. The visual style must be bright, fresh, warm, clean, child-friendly, and suitable for grade-2 elementary students.
+
+**页面文字**
+
+&gt; 课后任务一：按顺序连图片
+&gt; 小蝌蚪是怎样长成青蛙的？
+&gt;
+&gt; 初始样子 -&gt; 长后腿 -&gt; 长前腿 -&gt; 尾巴变短 -&gt; 尾巴不见
+
+**背景与版式锁定**
+
+- 背景生成锁定：16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9宽屏。背景为科考报告台。五张变化图片打乱排布，底部是一条空白时间轴。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+- 安全区类型：full-clean
+- 文字安全区：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘
+- 背景主体区：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净
+- 禁止进入区：动物主体、人物脸部、荷叶、水草、强光、高对比装饰、密集纹理不得进入中央文字区
+- 版式锁定：文字放置在：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘。背景主体放置在：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+- 字体层级与强调：标题最大，问题和任务次之，课文原句清晰分行；关键词可用水蓝、荷叶绿、暖橙强调，但文字位置不能离开文字安全区。
+
+---" type="button">复制本页 03 图文提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="37" data-title="讲故事支架页">
+      <header class="page-head">
+        <h2>第 37 页｜讲故事支架页</h2>
+        <button class="copy-btn" data-copy="## 第 37 页｜讲故事支架页
+
+**图文参考提示词**
+
+Create a polished 16:9 pure-image elementary Chinese lesson PPT reference page for 《小蝌蚪找妈妈》. First create the exact same background composition as the locked no-text background: 16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。排序后的图片固定在上方，中间是词语支架，下方是讲故事句式。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 Then place the page text inside the same text-safe area. Do not redesign, move, crop, or replace the background layout compared with the locked background. Use clear readable Chinese text and classroom PPT hierarchy. The visual style must be bright, fresh, warm, clean, child-friendly, and suitable for grade-2 elementary students.
+
+**页面文字**
+
+&gt; 看图讲故事
+&gt; 先，小蝌蚪……
+&gt; 接着，过了几天……
+&gt; 然后，过了几天……
+&gt; 后来，过了几天……
+&gt; 最后，不知什么时候……
+&gt;
+&gt; 提示：把身体变化和找妈妈的经过都讲进去。
+
+**背景与版式锁定**
+
+- 背景生成锁定：16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。排序后的图片固定在上方，中间是词语支架，下方是讲故事句式。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+- 安全区类型：full-clean
+- 文字安全区：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘
+- 背景主体区：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净
+- 禁止进入区：动物主体、人物脸部、荷叶、水草、强光、高对比装饰、密集纹理不得进入中央文字区
+- 版式锁定：文字放置在：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘。背景主体放置在：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+- 字体层级与强调：标题最大，问题和任务次之，课文原句清晰分行；关键词可用水蓝、荷叶绿、暖橙强调，但文字位置不能离开文字安全区。
+
+---" type="button">复制本页 03 图文提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="38" data-title="科考新闻发布会页">
+      <header class="page-head">
+        <h2>第 38 页｜科考新闻发布会页</h2>
+        <button class="copy-btn" data-copy="## 第 38 页｜科考新闻发布会页
+
+**图文参考提示词**
+
+Create a polished 16:9 pure-image elementary Chinese lesson PPT reference page for 《小蝌蚪找妈妈》. First create the exact same background composition as the locked no-text background: 16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9全屏。新闻发布会背景，左侧麦克风图标，右侧保留学生讲述支架。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 Then place the page text inside the same text-safe area. Do not redesign, move, crop, or replace the background layout compared with the locked background. Use clear readable Chinese text and classroom PPT hierarchy. The visual style must be bright, fresh, warm, clean, child-friendly, and suitable for grade-2 elementary students.
+
+**页面文字**
+
+&gt; 科考新闻发布会
+&gt; 请你借助图片和词语支架，
+&gt; 把《小蝌蚪找妈妈》的故事讲给大家听。
+&gt;
+&gt; 评价：
+&gt; 顺序正确  变化讲清楚  语句通顺
+
+**背景与版式锁定**
+
+- 背景生成锁定：16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9全屏。新闻发布会背景，左侧麦克风图标，右侧保留学生讲述支架。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+- 安全区类型：full-clean
+- 文字安全区：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘
+- 背景主体区：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净
+- 禁止进入区：动物主体、人物脸部、荷叶、水草、强光、高对比装饰、密集纹理不得进入中央文字区
+- 版式锁定：文字放置在：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘。背景主体放置在：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+- 字体层级与强调：标题最大，问题和任务次之，课文原句清晰分行；关键词可用水蓝、荷叶绿、暖橙强调，但文字位置不能离开文字安全区。
+
+---" type="button">复制本页 03 图文提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="39" data-title="写字指导三·哪那短孩">
+      <header class="page-head">
+        <h2>第 39 页｜写字指导三·哪那短孩</h2>
+        <button class="copy-btn" data-copy="## 第 39 页｜写字指导三·哪那短孩
+
+**图文参考提示词**
+
+Create a polished 16:9 pure-image elementary Chinese lesson PPT reference page for 《小蝌蚪找妈妈》. First create the exact same background composition as the locked no-text background: 16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。书法宣纸质感背景，四个田字格排列成2行2列。红蓝比例线标出左右结构和关键笔画。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 Then place the page text inside the same text-safe area. Do not redesign, move, crop, or replace the background layout compared with the locked background. Use clear readable Chinese text and classroom PPT hierarchy. The visual style must be bright, fresh, warm, clean, child-friendly, and suitable for grade-2 elementary students.
+
+**页面文字**
+
+&gt; 记录自然密码（二）
+&gt; 哪：各部分写紧凑，最后一笔竖最长。
+&gt; 那：左右基本均衡，右耳旁竖最长。
+&gt; 短：“矢”的捺变点，注意穿插。
+&gt; 孩：右边两撇，上短下长。
+
+**背景与版式锁定**
+
+- 背景生成锁定：16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9比例。书法宣纸质感背景，四个田字格排列成2行2列。红蓝比例线标出左右结构和关键笔画。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+- 安全区类型：full-clean
+- 文字安全区：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘
+- 背景主体区：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净
+- 禁止进入区：动物主体、人物脸部、荷叶、水草、强光、高对比装饰、密集纹理不得进入中央文字区
+- 版式锁定：文字放置在：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘。背景主体放置在：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+- 字体层级与强调：标题最大，问题和任务次之，课文原句清晰分行；关键词可用水蓝、荷叶绿、暖橙强调，但文字位置不能离开文字安全区。
+
+---" type="button">复制本页 03 图文提示词</button>
+      </header>
+    </article>
+
+    <article class="page-card" data-page="40" data-title="结课与课外探险页">
+      <header class="page-head">
+        <h2>第 40 页｜结课与课外探险页</h2>
+        <button class="copy-btn" data-copy="## 第 40 页｜结课与课外探险页
+
+**图文参考提示词**
+
+Create a polished 16:9 pure-image elementary Chinese lesson PPT reference page for 《小蝌蚪找妈妈》. First create the exact same background composition as the locked no-text background: 16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9全屏。明亮荷塘与田野背景，青蛙在荷叶上，远处有自然科考路线图。中央放置“优秀科考员”奖章，底部设置课外任务卡。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。 Then place the page text inside the same text-safe area. Do not redesign, move, crop, or replace the background layout compared with the locked background. Use clear readable Chinese text and classroom PPT hierarchy. The visual style must be bright, fresh, warm, clean, child-friendly, and suitable for grade-2 elementary students.
+
+**页面文字**
+
+&gt; 科考结业
+&gt; 我们借助图片、时间词、动作词，
+&gt; 讲清了小蝌蚪找妈妈的故事。
+&gt;
+&gt; 课外探险任务
+&gt; 1. 把这个故事讲给家人听。
+&gt; 2. 找一本关于青蛙成长的科普书读一读。
+
+**背景与版式锁定**
+
+- 背景生成锁定：16:9横向无字背景图。《小蝌蚪找妈妈》主题。背景构图固定为：16:9全屏。明亮荷塘与田野背景，青蛙在荷叶上，远处有自然科考路线图。中央放置“优秀科考员”奖章，底部设置课外任务卡。文字安全区必须按本页版式锁定保留为空白、低对比、低纹理区域；所有角色、主体、装饰和高对比元素必须停留在背景主体区。
+- 安全区类型：full-clean
+- 文字安全区：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘
+- 背景主体区：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净
+- 禁止进入区：动物主体、人物脸部、荷叶、水草、强光、高对比装饰、密集纹理不得进入中央文字区
+- 版式锁定：文字放置在：全页主体为低纹理浅色内容区，文字集中在中央 72% 宽度、70% 高度内，距四周至少 6%，装饰只在边缘。背景主体放置在：装饰、插图、图标和场景元素只放在四周边缘或角落，中央保持干净。03 生成纯图参考页时，文字必须放在同一区域，主要视觉元素不得移动到文字区。
+- 字体层级与强调：标题最大，问题和任务次之，课文原句清晰分行；关键词可用水蓝、荷叶绿、暖橙强调，但文字位置不能离开文字安全区。
+
+---" type="button">复制本页 03 图文提示词</button>
+      </header>
+    </article>
+        </div>
+        <div class="empty">没有找到匹配的页面。</div>
+      </section>
+  </main>
+
+  <script>
+    const tabs = Array.from(document.querySelectorAll(".tab"));
+    const panels = Array.from(document.querySelectorAll(".tab-panel"));
+    const search = document.querySelector("#search");
+    const jump = document.querySelector("#jump");
+    const copyVisible = document.querySelector("#copyVisible");
+
+    function activePanel() {
+      return document.querySelector(".tab-panel.active");
+    }
+
+    async function copyText(text, button) {
+      await navigator.clipboard.writeText(text);
+      const oldText = button.textContent;
+      button.textContent = "已复制";
+      button.classList.add("done");
+      setTimeout(() => {
+        button.textContent = oldText;
+        button.classList.remove("done");
+      }, 1100);
+    }
+
+    function refreshJump() {
+      const panel = activePanel();
+      const cards = Array.from(panel.querySelectorAll(".page-card"));
+      jump.innerHTML = cards
+        .map((card) => {
+          const page = card.dataset.page;
+          const title = card.dataset.title;
+          return '<option value="' + page + '">第 ' + page + ' 页｜' + title + '</option>';
+        })
+        .join("");
+    }
+
+    function applyFilter() {
+      const query = search.value.trim().toLowerCase();
+      const panel = activePanel();
+      const cards = Array.from(panel.querySelectorAll(".page-card"));
+      let visibleCount = 0;
+      for (const card of cards) {
+        const haystack = (card.dataset.page + " " + card.dataset.title).toLowerCase();
+        const show = !query || haystack.includes(query);
+        card.style.display = show ? "" : "none";
+        if (show) visibleCount += 1;
+      }
+      panel.querySelector(".empty").style.display = visibleCount ? "none" : "block";
+    }
+
+    tabs.forEach((tab) => {
+      tab.addEventListener("click", () => {
+        const id = tab.dataset.tab;
+        tabs.forEach((item) => item.setAttribute("aria-selected", String(item === tab)));
+        panels.forEach((panel) => panel.classList.toggle("active", panel.dataset.panel === id));
+        search.value = "";
+        refreshJump();
+        applyFilter();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      });
+    });
+
+    document.addEventListener("click", (event) => {
+      const button = event.target.closest(".copy-btn");
+      if (!button) return;
+      copyText(button.dataset.copy, button).catch(() => {
+        button.textContent = "复制失败，请手动选择";
+      });
+    });
+
+    search.addEventListener("input", applyFilter);
+    jump.addEventListener("change", () => {
+      const panel = activePanel();
+      const target = panel.querySelector('.page-card[data-page="' + jump.value + '"]');
+      if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    copyVisible.addEventListener("click", () => {
+      const panel = activePanel();
+      const firstVisible = Array.from(panel.querySelectorAll(".page-card")).find(
+        (card) => card.style.display !== "none"
+      );
+      if (!firstVisible) return;
+      const text = firstVisible.querySelector(".copy-btn").dataset.copy;
+      copyText(text, copyVisible).catch(() => {
+        copyVisible.textContent = "复制失败";
+      });
+    });
+
+    refreshJump();
+  </script>
+</body>
+</html>
